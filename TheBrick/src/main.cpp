@@ -1,18 +1,13 @@
-#include <Arduino.h>
+#include "System/systemDrivers.h"
+#include "staticPrograms/mainMenu.h"
+#include "appTemplates/staticApp.h"
 
-// put function declarations here:
-int myFunction(int, int);
-
+StaticApp *curentApp = &MainMenu::Get();
 void setup() {
-  // put your setup code here, to run once:
-  int result = myFunction(2, 3);
+SystemDrivers::Get().Setup();
+curentApp->Setup();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-}
-
-// put function definitions here:
-int myFunction(int x, int y) {
-  return x + y;
+ curentApp->Loop();
 }
