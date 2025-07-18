@@ -2,6 +2,7 @@
 #include "appTemplates/staticApp.h"
 #include "System/systemDrivers.h"
 #include <TFT_eSPI.h>
+#include "System/systemStructs.h"
 
 class MainMenu : public StaticApp
 {
@@ -12,7 +13,8 @@ class MainMenu : public StaticApp
     MainMenu &operator=(const MainMenu &) = delete;
 
     void Loop() override;
-    void Update(int button) override;
+    void UpdateButtons(int button) override;
+    void UpdateTouch(const TouchPoint* touches, int count) override;
     void Setup() override;
     void Draw() override;
 

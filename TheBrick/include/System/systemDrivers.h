@@ -1,6 +1,8 @@
 #pragma once
 #include "appTemplates/staticApp.h"
 #include <TFT_eSPI.h>
+#include <Adafruit_MCP23X17.h>
+#include "System/systemStructs.h"
 
 class SystemDrivers : public StaticApp
 {
@@ -11,15 +13,17 @@ class SystemDrivers : public StaticApp
     SystemDrivers &operator=(const SystemDrivers &) = delete;
 
     void Loop() override;
-    void Update(int button) override;
+    void UpdateButtons(int button) override;
+    void UpdateTouch(const TouchPoint* touches, int count) override;
     void Setup() override;
     void Draw() override;
 
     const unsigned char *getIcon();
 
     static TFT_eSPI &GetTFT();
+    static Adafruit_MCP23X17 &GetMCP();
+
 
   private:
     SystemDrivers(std::string name);
-    static TFT_eSPI tft;
 };

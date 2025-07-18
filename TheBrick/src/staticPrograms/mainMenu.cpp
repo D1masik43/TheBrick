@@ -13,7 +13,11 @@ void MainMenu::Loop() {
     Draw();
 }
 
-void MainMenu::Update(int button) {
+void MainMenu::UpdateButtons(int button) {
+
+}
+
+void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
 
 }
 
