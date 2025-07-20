@@ -56,6 +56,10 @@ void SystemDrivers::Setup() {
     {
         Serial.println("MCP NOT good");
     }
+
+    //  ====    ButtonHandler  ====
+    buttonEventQueue = xQueueCreate(10, sizeof(int));
+    xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
 }
 
 void SystemDrivers::Draw() {

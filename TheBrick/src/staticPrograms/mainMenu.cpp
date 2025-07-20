@@ -14,7 +14,7 @@ void MainMenu::Loop() {
 }
 
 void MainMenu::UpdateButtons(int button) {
-
+ Serial.println(button);
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {

@@ -1,13 +1,21 @@
 #include "System/systemDrivers.h"
+#include "System/buttonHandler.h"
 #include "staticPrograms/mainMenu.h"
 #include "appTemplates/staticApp.h"
 
-StaticApp *curentApp = &MainMenu::Get();
+StaticApp *currentApp = &MainMenu::Get();
 void setup() {
 SystemDrivers::Get().Setup();
-curentApp->Setup();
+currentApp->Setup();
 }
 
 void loop() {
- curentApp->Loop();
+ currentApp->Loop();
+  int buttonIndex;
+    if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))
+    {
+
+        // apps
+        currentApp->UpdateButtons(buttonIndex);
+    }
 }

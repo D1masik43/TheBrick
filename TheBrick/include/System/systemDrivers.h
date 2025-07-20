@@ -3,6 +3,7 @@
 #include <TFT_eSPI.h>
 #include <Adafruit_MCP23X17.h>
 #include "System/systemStructs.h"
+#include "System/buttonHandler.h"
 
 class SystemDrivers : public StaticApp
 {
