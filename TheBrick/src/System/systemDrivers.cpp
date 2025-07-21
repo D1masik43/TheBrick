@@ -10,9 +10,15 @@ TFT_eSPI &SystemDrivers::GetTFT() {
     return tft;
 }
 
+
 Adafruit_MCP23X17 &SystemDrivers::GetMCP() {
     static Adafruit_MCP23X17 mcp;
     return mcp;
+}
+
+arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &SystemDrivers::GetTouch() {
+    static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> touch;
+    return touch;
 }
 
 SystemDrivers::SystemDrivers(std::string name) : StaticApp(name) {
@@ -60,6 +66,14 @@ void SystemDrivers::Setup() {
     //  ====    ButtonHandler  ====
     buttonEventQueue = xQueueCreate(10, sizeof(int));
     xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
+
+    arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>  &touch = GetTouch();
+    if (!touch.initialize()) {
+        Serial.println("Touch not good");
+    }
+    else{
+        Serial.println("Touch good");
+    }
 }
 
 void SystemDrivers::Draw() {

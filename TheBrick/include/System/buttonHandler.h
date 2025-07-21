@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include "ft6336.hpp"
 
 extern QueueHandle_t buttonEventQueue; // Queue used to store button events
 extern bool lastStates[];              // Stores last known states of buttons

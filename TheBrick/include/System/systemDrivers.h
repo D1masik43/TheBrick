@@ -4,6 +4,7 @@
 #include <Adafruit_MCP23X17.h>
 #include "System/systemStructs.h"
 #include "System/buttonHandler.h"
+#include "System/systemDefines.h"
 
 class SystemDrivers : public StaticApp
 {
@@ -23,7 +24,7 @@ class SystemDrivers : public StaticApp
 
     static TFT_eSPI &GetTFT();
     static Adafruit_MCP23X17 &GetMCP();
-
+    static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &GetTouch();
 
   private:
     SystemDrivers(std::string name);

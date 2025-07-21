@@ -14,11 +14,17 @@ void MainMenu::Loop() {
 }
 
 void MainMenu::UpdateButtons(int button) {
- Serial.println(button);
+    Serial.println(button);                                          //  DEBUG
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-
+     if (touches == nullptr || count == 0) {                         //  DEBUG
+        return;
+    }
+    Serial.printf("Touches count: %d\n", count);                     //  DEBUG
+    for (int i = 0; i < count; i++) {
+        Serial.printf("Touch %d: x=%d, y=%d\n", i, touches[i].x, touches[i].y);
+    }
 }
 
 void MainMenu::Setup() {
