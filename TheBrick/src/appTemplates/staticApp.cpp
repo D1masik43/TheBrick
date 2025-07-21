@@ -1,19 +1,11 @@
 #include "appTemplates/staticApp.h"
 
-StaticApp::StaticApp(std::string name) : mName(name)
-{
-}
+StaticApp::StaticApp(std::string name) : mName(name) {}
 
-std::string StaticApp::GetName()
-{
+std::string StaticApp::GetName() const {
     return mName;
 }
-void StaticApp::SetName(std::string name)
-{
-    mName = name;
-}
 
-const unsigned char *StaticApp::getIcon()
-{
-    return nullptr;
+void StaticApp::SetName(const std::string& name) {
+    mName = name;
 }

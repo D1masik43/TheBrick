@@ -1,24 +1,13 @@
-    #pragma once
-    #include <string>
-    #include "System/systemStructs.h"
+#pragma once
+#include "appTemplates/appBase.h"
 
-    class StaticApp
-    {
-    public:
+class StaticApp : public AppBase {
+public:
+    StaticApp(std::string name);
 
-        StaticApp(std::string name);
+    std::string GetName() const override;
+    void SetName(const std::string& name) override;
 
-        virtual void Loop() = 0;
-        virtual void UpdateButtons(int button) = 0;
-        virtual void UpdateTouch(const TouchPoint* touches, int count) = 0;
-        virtual void Setup() = 0;
-        virtual void Draw() = 0;
-        std::string GetName();
-
-        void SetName(std::string name);
-
-        virtual const unsigned char *getIcon();
-
-    private:
-        std::string mName;
-    };
+protected:
+    std::string mName;
+};
