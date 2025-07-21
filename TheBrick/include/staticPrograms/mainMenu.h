@@ -3,6 +3,7 @@
 #include "System/systemDrivers.h"
 #include <TFT_eSPI.h>
 #include "System/systemStructs.h"
+#include "System/systemImages.h"
 
 class MainMenu : public StaticApp
 {

@@ -48,7 +48,7 @@ void SystemDrivers::Setup() {
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();
     tft->begin();
-    tft->setRotation(3);
+    tft->setRotation(4);
     tft->invertDisplay(true);
     tft->fillScreen(TFT_BLACK);
 
