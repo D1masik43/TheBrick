@@ -5,9 +5,16 @@ class StaticApp : public AppBase {
 public:
     StaticApp(std::string name);
 
+    void Loop() override;
+    void UpdateButtons(int button) override;
+    void UpdateTouch(const TouchPoint* touches, int count) override;
+    void Setup() override;
+    void Draw() override;
+    const unsigned char* getIcon() override;
+    
     std::string GetName() const override;
     void SetName(const std::string& name) override;
 
-protected:
+private:
     std::string mName;
 };
