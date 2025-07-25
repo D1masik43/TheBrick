@@ -24,5 +24,7 @@ class MainMenu : public StaticApp
   private:
     MainMenu(std::string name);
 
-     TFT_eSprite *screenBuff;
+    void DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity);
+
+    TFT_eSprite *screenBuff;
 };
