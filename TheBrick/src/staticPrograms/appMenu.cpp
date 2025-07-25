@@ -1,19 +1,19 @@
-#include "staticPrograms/mainMenu.h"
+#include "staticPrograms/appMenu.h"
 
-MainMenu &MainMenu::Get(std::string name) {
-    static MainMenu instance(name);
+AppMenu &AppMenu::Get(std::string name) {
+    static AppMenu instance(name);
     return instance;
 }
 
-MainMenu::MainMenu(std::string name) : StaticApp(name) {
+AppMenu::AppMenu(std::string name) : StaticApp(name) {
 
 }
 
-void MainMenu::Loop() {
+void AppMenu::Loop() {
     Draw();
 }
 
-void MainMenu::UpdateButtons(int button) {
+void AppMenu::UpdateButtons(int button) {
     switch(button) {
         case BUTTON_UP:
 
@@ -28,13 +28,13 @@ void MainMenu::UpdateButtons(int button) {
 
             break;
         case BUTTON_IN:
-            SystemCommon::Get().SetNextApp(&AppMenu::Get());
+
             break;
         case BUTTON_BACK:
-
+            SystemCommon::Get().SetNextApp(&MainMenu::Get());
             break;
         case BUTTON_HOME:
-
+            SystemCommon::Get().SetNextApp(&MainMenu::Get());
             break;
         case BUTTON_KEY1:
 
@@ -48,19 +48,19 @@ void MainMenu::UpdateButtons(int button) {
     }
 }
 
-void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-     if (touches == nullptr || count == 0) {
+void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
+    if (touches == nullptr || count == 0) {
         return;
     }
 
 }
 
-void MainMenu::Setup() {
+void AppMenu::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
 
 }
 
-void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity) {
+void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity) {
     for (int y = y0; y < y0 + h; y++) {
         for (int x = x0; x < x0 + w; x++) {
             int r = 0, g = 0, b = 0, count = 0;
@@ -87,17 +87,15 @@ void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity)
     }
 }
 
-void MainMenu::Draw() {
+void AppMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
     
-    DrawBlurredPatch(0, 0, 240, 20, 6);
-    
+    DrawBlurredPatch(0, 0, 240, 320, 3);
+
 }
 
 
 
-const unsigned char *MainMenu::getIcon() {
+const unsigned char *AppMenu::getIcon() {
     return nullptr;
 }
-
-

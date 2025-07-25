@@ -1,0 +1,35 @@
+#pragma once
+#include "appTemplates/staticApp.h"
+#include "System/systemDrivers.h"
+#include <TFT_eSPI.h>
+#include "System/systemStructs.h"
+#include "System/systemImages.h"
+#include "staticPrograms/mainMenu.h"
+
+class SystemCommon : public StaticApp
+{
+  public:
+    static SystemCommon &Get(std::string name = "MainMenu");
+
+    SystemCommon(const SystemCommon &) = delete;
+    SystemCommon &operator=(const SystemCommon &) = delete;
+
+    void Loop() override;
+    void UpdateButtons(int button) override;
+    void UpdateTouch(const TouchPoint* touches, int count) override;
+    void Setup() override;
+    void Draw() override;
+
+    const unsigned char *getIcon();
+
+    AppBase* GetCurrentApp();
+
+    void SetNextApp(AppBase* app);
+    void ProcessAppSwitch();
+
+  private:
+    SystemCommon(std::string name);
+
+    static AppBase* currentApp;
+    static AppBase* nextApp;
+};

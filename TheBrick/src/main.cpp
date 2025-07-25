@@ -2,27 +2,26 @@
 #include "System/buttonHandler.h"
 #include "staticPrograms/mainMenu.h"
 #include "appTemplates/staticApp.h"
+#include "System/systemCommon.h"
 
-StaticApp *currentApp = &MainMenu::Get();
 TFT_eSprite *screenBuff;
 
 void setup() {
   screenBuff = &SystemDrivers::Get().GetScreenBuff();
 
   SystemDrivers::Get().Setup();
-  currentApp->Setup();
+  SystemCommon::Get().GetCurrentApp()->Setup();
 
 }
 
 void loop() {
 
-  currentApp->Loop();
+  SystemCommon::Get().GetCurrentApp()->Loop();
   int buttonIndex;
     if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))
     {
-
-        // apps
-        currentApp->UpdateButtons(buttonIndex);
+      Serial.println(buttonIndex);
+      SystemCommon::Get().GetCurrentApp()->UpdateButtons(buttonIndex);
     }
 
   arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
@@ -42,8 +41,10 @@ void loop() {
       points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
     }
 
-    currentApp->UpdateTouch(points, valid);
+    SystemCommon::Get().GetCurrentApp()->UpdateTouch(points, valid);
   } 
 
   screenBuff->pushSprite(0, 0);
+
+  SystemCommon::Get().ProcessAppSwitch();
 }
