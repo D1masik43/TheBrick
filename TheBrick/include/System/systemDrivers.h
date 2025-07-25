@@ -25,7 +25,9 @@ class SystemDrivers : public StaticApp
     static TFT_eSPI &GetTFT();
     static Adafruit_MCP23X17 &GetMCP();
     static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &GetTouch();
+    static TFT_eSprite &GetScreenBuff();
 
   private:
     SystemDrivers(std::string name);
+    
 };

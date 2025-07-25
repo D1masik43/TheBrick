@@ -10,6 +10,10 @@ TFT_eSPI &SystemDrivers::GetTFT() {
     return tft;
 }
 
+TFT_eSprite &SystemDrivers::GetScreenBuff() {
+    static TFT_eSprite screenBuffer = TFT_eSprite(&GetTFT()); 
+    return screenBuffer;
+}
 
 Adafruit_MCP23X17 &SystemDrivers::GetMCP() {
     static Adafruit_MCP23X17 mcp;
@@ -48,9 +52,13 @@ void SystemDrivers::Setup() {
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();
     tft->begin();
-    tft->setRotation(4);
+    tft->setRotation(0);
     tft->invertDisplay(true);
     tft->fillScreen(TFT_BLACK);
+
+    TFT_eSprite *screenBuffer = &GetScreenBuff(); 
+    screenBuffer->setColorDepth(16);
+    screenBuffer->createSprite(240, 320);
 
     //  ====    MCP  ====
     Adafruit_MCP23X17 &mcp = GetMCP();

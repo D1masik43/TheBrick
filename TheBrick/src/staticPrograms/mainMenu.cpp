@@ -28,20 +28,12 @@ void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
 }
 
 void MainMenu::Setup() {
-    tft = &SystemDrivers::Get().GetTFT();
+    screenBuff = &SystemDrivers::Get().GetScreenBuff();
+
 }
 
 void MainMenu::Draw() {
-    tft->startWrite();
-    tft->setAddrWindow(0, 0, 240, 320);
-    for (int y = 0; y < 320; y++)
-    {
-        for (int x = 0; x < 240; x++)
-        {
-            tft->pushColor(wallpaper[y][x]);
-        }
-    }
-    tft->endWrite();   
+    screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
 }
 
 

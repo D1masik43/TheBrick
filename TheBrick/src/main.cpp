@@ -4,13 +4,19 @@
 #include "appTemplates/staticApp.h"
 
 StaticApp *currentApp = &MainMenu::Get();
+TFT_eSprite *screenBuff;
+
 void setup() {
-SystemDrivers::Get().Setup();
-currentApp->Setup();
+  screenBuff = &SystemDrivers::Get().GetScreenBuff();
+
+  SystemDrivers::Get().Setup();
+  currentApp->Setup();
+
 }
 
 void loop() {
- currentApp->Loop();
+
+  currentApp->Loop();
   int buttonIndex;
     if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))
     {
@@ -19,23 +25,25 @@ void loop() {
         currentApp->UpdateButtons(buttonIndex);
     }
 
-    arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
+  arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
 
-    if (touch.update()) {
-        size_t count = touch.touches();
-        TouchPoint points[2];  // Max 2 touches supported
+  if (touch.update()) {
+    size_t count = touch.touches();
+    TouchPoint points[2];  // Max 2 touches supported
 
-        int valid = 0;
-        uint16_t x, y;
+    int valid = 0;
+    uint16_t x, y;
 
-        if (touch.xy(&x, &y)) {
-            points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
-        }
+    if (touch.xy(&x, &y)) {
+      points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
+    }
 
-        if (count > 1 && touch.xy2(&x, &y)) {
-            points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
-        }
+    if (count > 1 && touch.xy2(&x, &y)) {
+      points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
+    }
 
-        currentApp->UpdateTouch(points, valid);
-    } 
+    currentApp->UpdateTouch(points, valid);
+  } 
+
+  screenBuff->pushSprite(0, 0);
 }

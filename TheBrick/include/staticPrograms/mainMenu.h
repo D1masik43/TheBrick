@@ -24,5 +24,5 @@ class MainMenu : public StaticApp
   private:
     MainMenu(std::string name);
 
-    TFT_eSPI *tft;
+     TFT_eSprite *screenBuff;
 };
