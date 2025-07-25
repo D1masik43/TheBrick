@@ -6,6 +6,7 @@
 #include "System/systemImages.h"
 #include "System/systemCommon.h"
 #include "staticPrograms/appMenu.h"
+#include <esp_heap_caps.h>
 
 class MainMenu : public StaticApp
 {

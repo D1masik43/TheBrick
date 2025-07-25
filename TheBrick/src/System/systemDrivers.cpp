@@ -58,6 +58,7 @@ void SystemDrivers::Setup() {
 
     TFT_eSprite *screenBuffer = &GetScreenBuff(); 
     screenBuffer->setColorDepth(16);
+    screenBuffer->setAttribute(PSRAM_ENABLE, true);
     screenBuffer->createSprite(240, 320);
 
     //  ====    MCP  ====

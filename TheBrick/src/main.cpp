@@ -12,6 +12,13 @@ void setup() {
   SystemDrivers::Get().Setup();
   SystemCommon::Get().GetCurrentApp()->Setup();
 
+ wallpaper = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    if (!wallpaper) {
+        Serial.println("Failed to allocate wallpaper in PSRAM");
+        return;
+    }
+    // Copy from flash (initialized wallpaper) to PSRAM buffer
+  memcpy(wallpaper, defaultWallpaper, 320 * 240 * sizeof(uint16_t));
 }
 
 void loop() {

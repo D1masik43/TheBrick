@@ -90,7 +90,7 @@ void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity) 
 void AppMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
     
-    DrawBlurredPatch(0, 0, 240, 320, 3);
+    DrawBlurredPatch(0, 0, 240, 320, 2);
 
 }
 
