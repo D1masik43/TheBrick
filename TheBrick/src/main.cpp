@@ -4,6 +4,9 @@
 #include "appTemplates/staticApp.h"
 #include "System/systemCommon.h"
 
+TouchPoint lastPoints[2];
+bool lastTouchValid[2] = { false, false };
+
 TFT_eSprite *screenBuff;
 
 void setup() {
@@ -31,25 +34,56 @@ void loop() {
       SystemCommon::Get().GetCurrentApp()->UpdateButtons(buttonIndex);
     }
 
-  arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
+ arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
 
   if (touch.update()) {
     size_t count = touch.touches();
-    TouchPoint points[2];  // Max 2 touches supported
+    TouchPoint points[2] = {};  // Reset each loop
+    bool currentTouchValid[2] = { false, false };
 
-    int valid = 0;
     uint16_t x, y;
 
+    // First touch
     if (touch.xy(&x, &y)) {
-      points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
+      currentTouchValid[0] = true;
+
+      TouchType type = NONE;
+      if (lastTouchValid[0]) type = SLIDE;
+
+      points[0] = { static_cast<int>(x), static_cast<int>(y), type };
+    } else {
+      if (lastTouchValid[0]) {
+        // Previously touched, now released = TAP
+        points[0] = { lastPoints[0].x, lastPoints[0].y, TAP };
+        currentTouchValid[0] = false;
+      }
     }
 
+    // Second touch
     if (count > 1 && touch.xy2(&x, &y)) {
-      points[valid++] = {static_cast<int>(x), static_cast<int>(y)};
+      currentTouchValid[1] = true;
+
+      TouchType type = NONE;
+      if (lastTouchValid[1]) type = SLIDE;
+
+      points[1] = { static_cast<int>(x), static_cast<int>(y), type };
+    } else {
+      if (lastTouchValid[1]) {
+        points[1] = { lastPoints[1].x, lastPoints[1].y, TAP };
+        currentTouchValid[1] = false;
+      }
     }
 
-    SystemCommon::Get().GetCurrentApp()->UpdateTouch(points, valid);
-  } 
+    // Count how many valid touches to pass
+    int validCount = (points[0].type != NONE) + (points[1].type != NONE);
+    SystemCommon::Get().GetCurrentApp()->UpdateTouch(points, validCount);
+
+    // Save last touch state
+    lastPoints[0] = points[0];
+    lastPoints[1] = points[1];
+    lastTouchValid[0] = currentTouchValid[0];
+    lastTouchValid[1] = currentTouchValid[1];
+  }
 
   screenBuff->pushSprite(0, 0);
 

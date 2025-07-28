@@ -49,10 +49,34 @@ void MainMenu::UpdateButtons(int button) {
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-     if (touches == nullptr || count == 0) {
-        return;
-    }
 
+    for (int i = 0; i < count; ++i) {
+    
+        switch (touches[i].type) {
+            case TAP:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("TAP");
+                break;
+            case SLIDE:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE");
+                break;
+            default:
+                break;
+        }
+    }
 }
 
 void MainMenu::Setup() {
@@ -90,7 +114,7 @@ void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity)
 void MainMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
     
-    DrawBlurredPatch(0, 0, 240, 20, 6);
+    DrawBlurredPatch(0, 0, 240, 20, 2);
      size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
 

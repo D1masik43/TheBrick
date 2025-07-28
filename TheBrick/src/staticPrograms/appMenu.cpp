@@ -49,10 +49,7 @@ void AppMenu::UpdateButtons(int button) {
 }
 
 void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
-    if (touches == nullptr || count == 0) {
-        return;
-    }
-
+   
 }
 
 void AppMenu::Setup() {
