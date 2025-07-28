@@ -33,13 +33,13 @@ void loop() {
 
  TouchPoint receivedPoints[2];
 
-if (xQueueReceive(touchEventQueue, &receivedPoints, 0)) {
-    int count = 0;
-    if (receivedPoints[0].type != NONE) count++;
-    if (receivedPoints[1].type != NONE) count++;
+  if (xQueueReceive(touchEventQueue, &receivedPoints, 0)) {
+      int count = 0;
+      if (receivedPoints[0].type != NONE) count++;
+      if (receivedPoints[1].type != NONE) count++;
 
-    SystemCommon::Get().GetCurrentApp()->UpdateTouch(receivedPoints, count);
-}
+      SystemCommon::Get().GetCurrentApp()->UpdateTouch(receivedPoints, count);
+  }
 
 
   screenBuff->pushSprite(0, 0);

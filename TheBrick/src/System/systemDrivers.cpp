@@ -48,7 +48,7 @@ void SystemDrivers::Setup() {
 
     //  ====    I2C  ====
     Wire.begin(45, 48);  // SDA = 45, SCL = 48
-    Wire.setClock(1000000);
+    Wire.setClock(400000);
 
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();

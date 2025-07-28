@@ -1,11 +1,12 @@
-#include "System/systemDrivers.h"
-#include "System/systemCommon.h"
 #include "System/touchHandler.h"
 
 TouchPoint lastPoints[2];
 bool lastTouchValid[2] = { false, false };
-
 QueueHandle_t touchEventQueue;
+
+bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 2) {
+    return (std::abs(x1 - x2) > threshold) || (std::abs(y1 - y2) > threshold);
+}
 
 void handleTouch() {
     arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
@@ -17,18 +18,66 @@ void handleTouch() {
 
     uint16_t x, y;
 
+    // Touch 0
     if (touch.xy(&x, &y)) {
         currentTouchValid[0] = true;
-        points[0] = { (int)x, (int)y, lastTouchValid[0] ? SLIDE : NONE };
+
+        // Only mark SLIDE if last was SLIDE AND moved enough from last point
+        TouchType type = NONE;
+        if (lastTouchValid[0]) {
+            if (lastPoints[0].type == SLIDE) {
+                if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
+                    type = SLIDE;
+                } else {
+                    // Still finger down but movement too small, no SLIDE yet
+                    type = NONE;
+                }
+            } else {
+                // Last valid but not slide yet: check if moved enough to start slide
+                if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
+                    type = SLIDE;
+                } else {
+                    type = NONE;
+                }
+            }
+        } else {
+            // First touch: no slide, no tap, just NONE
+            type = NONE;
+        }
+
+        points[0] = { (int)x, (int)y, type };
     } else if (lastTouchValid[0]) {
         points[0] = { lastPoints[0].x, lastPoints[0].y, TAP };
+        lastTouchValid[0] = false;
     }
 
+    // Touch 1
     if (touch.touches() > 1 && touch.xy2(&x, &y)) {
         currentTouchValid[1] = true;
-        points[1] = { (int)x, (int)y, lastTouchValid[1] ? SLIDE : NONE };
+
+        TouchType type = NONE;
+        if (lastTouchValid[1]) {
+            if (lastPoints[1].type == SLIDE) {
+                if (movedEnough(x, y, lastPoints[1].x, lastPoints[1].y)) {
+                    type = SLIDE;
+                } else {
+                    type = NONE;
+                }
+            } else {
+                if (movedEnough(x, y, lastPoints[1].x, lastPoints[1].y)) {
+                    type = SLIDE;
+                } else {
+                    type = NONE;
+                }
+            }
+        } else {
+            type = NONE;
+        }
+
+        points[1] = { (int)x, (int)y, type };
     } else if (lastTouchValid[1]) {
         points[1] = { lastPoints[1].x, lastPoints[1].y, TAP };
+        lastTouchValid[1] = false;
     }
 
     int validCount = 0;
@@ -36,7 +85,7 @@ void handleTouch() {
     if (points[1].type != NONE) validCount++;
 
     if (validCount > 0) {
-        xQueueSend(touchEventQueue, &points, 0);  // Send full array (structs)
+        xQueueSend(touchEventQueue, &points, 0);
     }
 
     lastPoints[0] = points[0];
