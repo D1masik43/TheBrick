@@ -14,34 +14,99 @@ void MainMenu::Loop() {
 }
 
 void MainMenu::UpdateButtons(int button) {
-    Serial.println(button);                                          //  DEBUG
+    switch(button) {
+        case BUTTON_UP:
+
+            break;
+        case BUTTON_DOWN:
+
+            break;
+        case BUTTON_LEFT:
+
+            break;
+        case BUTTON_RIGHT:
+
+            break;
+        case BUTTON_IN:
+            SystemCommon::Get().SetNextApp(&AppMenu::Get());
+            break;
+        case BUTTON_BACK:
+
+            break;
+        case BUTTON_HOME:
+
+            break;
+        case BUTTON_KEY1:
+
+            break;
+        case BUTTON_KEY2:
+
+            break;
+        default:
+
+        break;
+    }
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-     if (touches == nullptr || count == 0) {                         //  DEBUG
-        return;
-    }
-    Serial.printf("Touches count: %d\n", count);                     //  DEBUG
-    for (int i = 0; i < count; i++) {
-        Serial.printf("Touch %d: x=%d, y=%d\n", i, touches[i].x, touches[i].y);
+
+    for (int i = 0; i < count; ++i) {
+    
+        switch (touches[i].type) {
+            case TAP:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("TAP");
+                break;
+            case SLIDE:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE");
+                break;
+            default:
+                break;
+        }
     }
 }
 
 void MainMenu::Setup() {
-    tft = &SystemDrivers::Get().GetTFT();
+    screenBuff = &SystemDrivers::Get().GetScreenBuff();
+
 }
 
-void MainMenu::Draw() {
-    tft->startWrite();
-    tft->setAddrWindow(0, 0, 240, 320);
-    for (int y = 0; y < 320; y++)
-    {
-        for (int x = 0; x < 240; x++)
-        {
-            tft->pushColor(wallpaper[y][x]);
+void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
+    for (int y = y0; y < y0 + h; y++) {
+        for (int x = x0; x < x0 + w; x++) {
+            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
+                uint16_t p = wallpaperBlurred[y][x];
+                screenBuff->drawPixel(x, y, p);
+            }
         }
     }
-    tft->endWrite();   
+}
+
+
+void MainMenu::Draw() {
+    screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
+    
+    DrawBlurredPatch(0, 0, 240, 20);
+     size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+
+    screenBuff->setTextColor(TFT_WHITE,TFT_BLACK);
+    screenBuff->setCursor(6, 4);
+    screenBuff->setTextSize(1);
+    screenBuff->printf("DRAM: %d KB\n PSRAM: %d KB", (int)free_dram/1024, (int)free_psram/1024);
 }
 
 

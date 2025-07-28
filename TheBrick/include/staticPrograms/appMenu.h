@@ -5,16 +5,14 @@
 #include "System/systemStructs.h"
 #include "System/systemImages.h"
 #include "System/systemCommon.h"
-#include "staticPrograms/appMenu.h"
-#include <esp_heap_caps.h>
 
-class MainMenu : public StaticApp
+class AppMenu : public StaticApp
 {
   public:
-    static MainMenu &Get(std::string name = "MainMenu");
+    static AppMenu &Get(std::string name = "MainMenu");
 
-    MainMenu(const MainMenu &) = delete;
-    MainMenu &operator=(const MainMenu &) = delete;
+    AppMenu(const AppMenu &) = delete;
+    AppMenu &operator=(const AppMenu &) = delete;
 
     void Loop() override;
     void UpdateButtons(int button) override;
@@ -25,7 +23,7 @@ class MainMenu : public StaticApp
     const unsigned char *getIcon();
 
   private:
-    MainMenu(std::string name);
+    AppMenu(std::string name);
 
     void DrawBlurredPatch(int x0, int y0, int w, int h);
 

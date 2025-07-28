@@ -10,6 +10,10 @@ TFT_eSPI &SystemDrivers::GetTFT() {
     return tft;
 }
 
+TFT_eSprite &SystemDrivers::GetScreenBuff() {
+    static TFT_eSprite screenBuffer = TFT_eSprite(&GetTFT()); 
+    return screenBuffer;
+}
 
 Adafruit_MCP23X17 &SystemDrivers::GetMCP() {
     static Adafruit_MCP23X17 mcp;
@@ -44,13 +48,19 @@ void SystemDrivers::Setup() {
 
     //  ====    I2C  ====
     Wire.begin(45, 48);  // SDA = 45, SCL = 48
+    Wire.setClock(400000);
 
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();
     tft->begin();
-    tft->setRotation(4);
+    tft->setRotation(0);
     tft->invertDisplay(true);
     tft->fillScreen(TFT_BLACK);
+
+    TFT_eSprite *screenBuffer = &GetScreenBuff(); 
+    screenBuffer->setColorDepth(16);
+    screenBuffer->setAttribute(PSRAM_ENABLE, true);
+    screenBuffer->createSprite(240, 320);
 
     //  ====    MCP  ====
     Adafruit_MCP23X17 &mcp = GetMCP();
@@ -67,6 +77,8 @@ void SystemDrivers::Setup() {
     buttonEventQueue = xQueueCreate(10, sizeof(int));
     xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
 
+     //  ====    FT6336  ====
+
     arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>  &touch = GetTouch();
     if (!touch.initialize()) {
         Serial.println("Touch not good");
@@ -74,6 +86,11 @@ void SystemDrivers::Setup() {
     else{
         Serial.println("Touch good");
     }
+
+    //  ====    TouchHandler  ====
+
+    touchEventQueue = xQueueCreate(4, sizeof(TouchPoint[2]));  // Room for 4 touch events
+    xTaskCreatePinnedToCore(touchTask, "TouchTask", 4096, NULL, 1, NULL, 0);
 }
 
 void SystemDrivers::Draw() {
