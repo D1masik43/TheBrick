@@ -77,6 +77,8 @@ void SystemDrivers::Setup() {
     buttonEventQueue = xQueueCreate(10, sizeof(int));
     xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
 
+     //  ====    FT6336  ====
+
     arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>  &touch = GetTouch();
     if (!touch.initialize()) {
         Serial.println("Touch not good");
@@ -84,6 +86,11 @@ void SystemDrivers::Setup() {
     else{
         Serial.println("Touch good");
     }
+
+    //  ====    TouchHandler  ====
+
+    touchEventQueue = xQueueCreate(4, sizeof(TouchPoint[2]));  // Room for 4 touch events
+    xTaskCreatePinnedToCore(touchTask, "TouchTask", 4096, NULL, 1, NULL, 0);
 }
 
 void SystemDrivers::Draw() {

@@ -5,6 +5,7 @@
 #include "System/systemStructs.h"
 #include "System/buttonHandler.h"
 #include "System/systemDefines.h"
+#include "System/touchHandler.h"
 
 class SystemDrivers : public StaticApp
 {
