@@ -57,37 +57,22 @@ void AppMenu::Setup() {
 
 }
 
-void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h, int blurIntensity) {
+void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
     for (int y = y0; y < y0 + h; y++) {
         for (int x = x0; x < x0 + w; x++) {
-            int r = 0, g = 0, b = 0, count = 0;
-            for (int dy = -blurIntensity; dy <= blurIntensity; dy++) {
-                for (int dx = -blurIntensity; dx <= blurIntensity; dx++) {
-                    int px = x + dx;
-                    int py = y + dy;
-                    if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
-                        uint16_t p = wallpaper[py][px];
-                        p = (p >> 8) | (p << 8); 
-                        r += (p >> 11) & 0x1F;
-                        g += (p >> 5) & 0x3F;
-                        b += p & 0x1F;
-                        count++;
-                    }
-                }
+            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
+                uint16_t p = wallpaperBlurred[y][x];
+                screenBuff->drawPixel(x, y, p);
             }
-            r /= count;
-            g /= count;
-            b /= count;
-            uint16_t blurred = (r << 11) | (g << 5) | b;
-            screenBuff->drawPixel(x, y, blurred);  // ← Sprite version of pushColor
         }
     }
 }
 
+
 void AppMenu::Draw() {
-    screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
+   // screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
     
-    DrawBlurredPatch(0, 0, 240, 320, 2);
+    DrawBlurredPatch(0, 0, 240, 320);
 
 }
 

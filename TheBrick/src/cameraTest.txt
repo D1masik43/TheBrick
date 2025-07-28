@@ -37,7 +37,7 @@ void setup() {
 
   // === Init TFT ===
   tft.begin();
-  tft.setRotation(3);
+  tft.setRotation(0);
   tft.invertDisplay(true);
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE);
@@ -70,7 +70,7 @@ void setup() {
   config.pin_reset = RESET_GPIO_NUM;
 
   config.xclk_freq_hz = 20000000;
-  config.pixel_format = PIXFORMAT_JPEG;
+  config.pixel_format = PIXFORMAT_RGB565;
 
   if (psramFound()) {
     config.frame_size = FRAMESIZE_QVGA;  // 320x240
@@ -96,6 +96,7 @@ void setup() {
 
   sensor_t *s = esp_camera_sensor_get();
   s->set_vflip(s, 1);  // Flip if image is upside down
+  s->set_hmirror(s, 1); 
 
   tft.fillScreen(TFT_GREEN);
   tft.drawString("Camera OK", 10, 30);
@@ -109,13 +110,20 @@ void loop() {
     return;
   }
 
-  if (fb->format == PIXFORMAT_JPEG) {
-    // Clear screen only before first draw, or remove this line
-    // tft.fillScreen(TFT_BLACK);
-    TJpgDec.drawJpg(0, 0, fb->buf, fb->len);
-  } else {
-    Serial.println("Not a JPEG frame!");
-  }
+if (fb->format == PIXFORMAT_RGB565) {
+  // Frame size from camera
+  int camWidth = fb->width;
+  int camHeight = fb->height;
 
+  // Optional: center the image on the display
+  int xOffset = (tft.width() - camWidth) / 2;
+  int yOffset = (tft.height() - camHeight) / 2;
+
+  // Cast buffer to uint16_t* because RGB565 = 2 bytes per pixel
+  uint16_t *img = (uint16_t *)fb->buf;
+
+  // Draw directly
+  tft.pushImage(xOffset, yOffset, camWidth, camHeight, img);
+}
   esp_camera_fb_return(fb);
 }

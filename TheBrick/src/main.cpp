@@ -6,19 +6,53 @@
 
 TFT_eSprite *screenBuff;
 
+void MakeBlurredWalpaper(int x0, int y0, int w, int h, int blurIntensity) {
+    for (int y = y0; y < y0 + h; y++) {
+        for (int x = x0; x < x0 + w; x++) {
+            int r = 0, g = 0, b = 0, count = 0;
+            for (int dy = -blurIntensity; dy <= blurIntensity; dy++) {
+                for (int dx = -blurIntensity; dx <= blurIntensity; dx++) {
+                    int px = x + dx;
+                    int py = y + dy;
+                    if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
+                        uint16_t p = wallpaper[py][px];
+                         p = (p >> 8) | (p << 8);
+                        r += (p >> 11) & 0x1F;
+                        g += (p >> 5) & 0x3F;
+                        b += p & 0x1F;
+                        count++;
+                    }
+                }
+            }
+            r /= count;
+            g /= count;
+            b /= count;
+            uint16_t blurred = (r << 11) | (g << 5) | b;
+            wallpaperBlurred[y][x] = blurred;
+        }
+    }
+}
+
 void setup() {
   screenBuff = &SystemDrivers::Get().GetScreenBuff();
 
   SystemDrivers::Get().Setup();
   SystemCommon::Get().GetCurrentApp()->Setup();
 
- wallpaper = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    wallpaper = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
     if (!wallpaper) {
         Serial.println("Failed to allocate wallpaper in PSRAM");
         return;
     }
     // Copy from flash (initialized wallpaper) to PSRAM buffer
   memcpy(wallpaper, defaultWallpaper, 320 * 240 * sizeof(uint16_t));
+
+    wallpaperBlurred = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    if (!wallpaperBlurred) {
+        Serial.println("Failed to allocate wallpaper in PSRAM");
+        return;
+    }
+    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 10);
 }
 
 void loop() {
