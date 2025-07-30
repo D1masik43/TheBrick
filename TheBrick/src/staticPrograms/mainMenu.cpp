@@ -111,7 +111,7 @@ void MainMenu::Draw() {
 
 
 
-const unsigned char *MainMenu::getIcon() {
+const uint16_t *MainMenu::getIcon() {
     return nullptr;
 }
 

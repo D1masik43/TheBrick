@@ -20,7 +20,7 @@ class SystemCommon : public StaticApp
     void Setup() override;
     void Draw() override;
 
-    const unsigned char *getIcon();
+    const uint16_t *getIcon();
 
     AppBase* GetCurrentApp();
 

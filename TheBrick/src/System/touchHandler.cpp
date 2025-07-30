@@ -4,7 +4,7 @@ TouchPoint lastPoints[2];
 bool lastTouchValid[2] = { false, false };
 QueueHandle_t touchEventQueue;
 
-bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 2) {
+bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 0) {
     return (std::abs(x1 - x2) > threshold) || (std::abs(y1 - y2) > threshold);
 }
 

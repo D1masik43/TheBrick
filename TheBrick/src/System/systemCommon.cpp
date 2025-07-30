@@ -49,6 +49,6 @@ void SystemCommon::ProcessAppSwitch() {
     }
 }
 
-const unsigned char *SystemCommon::getIcon() {
+const uint16_t *SystemCommon::getIcon() {
     return nullptr;
 }

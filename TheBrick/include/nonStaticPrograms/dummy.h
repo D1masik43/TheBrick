@@ -1,9 +1,10 @@
 #pragma once
-#include "appTemplates/appBase.h"
 
-class NonStaticApp : public AppBase {
+#include "appTemplates/nonStaticApp.h"
+
+class DummyNonStaticApp : public NonStaticApp {
 public:
-    NonStaticApp(std::string name);
+    DummyNonStaticApp(const std::string& name);
 
     void Loop() override;
     void UpdateButtons(int button) override;
@@ -11,10 +12,10 @@ public:
     void Setup() override;
     void Draw() override;
     const uint16_t* getIcon() override;
-    
-    std::string GetName() const override;
-    void SetName(const std::string& name) override;
+
+    static const uint16_t* StaticIcon();  // For wrapper
 
 private:
-    std::string mName;
+    // Any dummy state if needed
 };
+    

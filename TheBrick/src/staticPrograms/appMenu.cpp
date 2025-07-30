@@ -48,8 +48,19 @@ void AppMenu::UpdateButtons(int button) {
     }
 }
 
+int rectX = 100;
+int rectY = 200;
+int rectRadius = 25;
+
 void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
-   
+    if(touches[0].type == SLIDE)
+    {
+        if(((touches[0].x > rectX-rectRadius) || (touches[0].x < rectX+rectRadius)) && ((touches[0].y > rectY-rectRadius) | (touches[0].y < rectY+rectRadius)))
+        {
+            rectX = touches[0].x;
+            rectY = touches[0].y;
+        }
+    }
 }
 
 void AppMenu::Setup() {
@@ -68,16 +79,14 @@ void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
     }
 }
 
-
 void AppMenu::Draw() {
-   // screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
     
     DrawBlurredPatch(0, 0, 240, 320);
-
+    screenBuff->fillRect(rectX-rectRadius, rectY-rectRadius, rectRadius*2, rectRadius*2, TFT_RED);
 }
 
 
 
-const unsigned char *AppMenu::getIcon() {
+const uint16_t *AppMenu::getIcon() {
     return nullptr;
 }

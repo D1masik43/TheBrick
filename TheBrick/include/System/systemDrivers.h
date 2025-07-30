@@ -21,7 +21,7 @@ class SystemDrivers : public StaticApp
     void Setup() override;
     void Draw() override;
 
-    const unsigned char *getIcon();
+    const uint16_t *getIcon();
 
     static TFT_eSPI &GetTFT();
     static Adafruit_MCP23X17 &GetMCP();

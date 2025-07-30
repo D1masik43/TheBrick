@@ -5,6 +5,7 @@
 #include "System/systemStructs.h"
 #include "System/systemImages.h"
 #include "System/systemCommon.h"
+#include "staticPrograms/allStaticPrograms.h"
 
 class AppMenu : public StaticApp
 {
@@ -20,7 +21,7 @@ class AppMenu : public StaticApp
     void Setup() override;
     void Draw() override;
 
-    const unsigned char *getIcon();
+    const uint16_t *getIcon();
 
   private:
     AppMenu(std::string name);

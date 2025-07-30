@@ -22,7 +22,7 @@ void NonStaticApp::Draw() {
 
 }
 
-const unsigned char* NonStaticApp::getIcon() {
+const uint16_t* NonStaticApp::getIcon() {
     return nullptr;
 }
 
