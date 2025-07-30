@@ -1,56 +1,56 @@
 #include "staticPrograms/dummy_wrapper.h"
 
-MyNonStaticAppWrapper &MyNonStaticAppWrapper::Get(std::string name) {
-    static MyNonStaticAppWrapper instance(name);
+DummyAppNonStaticAppWrapper &DummyAppNonStaticAppWrapper::Get(std::string name) {
+    static DummyAppNonStaticAppWrapper instance(name);
     return instance;
 }
 
-MyNonStaticAppWrapper::MyNonStaticAppWrapper(std::string name) : StaticApp(name) {
+DummyAppNonStaticAppWrapper::DummyAppNonStaticAppWrapper(std::string name) : StaticApp(name) {
 
 }
 
-void MyNonStaticAppWrapper::Setup() {
+void DummyAppNonStaticAppWrapper::Setup() {
     if (!mApp) {
         mApp = new DummyNonStaticApp(mName);
         mApp->Setup();
     }
 }
 
-void MyNonStaticAppWrapper::Loop() {
+void DummyAppNonStaticAppWrapper::Loop() {
     if (mApp) mApp->Loop();
 }
 
-void MyNonStaticAppWrapper::UpdateButtons(int button) {
+void DummyAppNonStaticAppWrapper::UpdateButtons(int button) {
     if (mApp) mApp->UpdateButtons(button);
 }
 
-void MyNonStaticAppWrapper::UpdateTouch(const TouchPoint* touches, int count) {
+void DummyAppNonStaticAppWrapper::UpdateTouch(const TouchPoint* touches, int count) {
     if (mApp) mApp->UpdateTouch(touches, count);
 }
 
-void MyNonStaticAppWrapper::Draw() {
+void DummyAppNonStaticAppWrapper::Draw() {
     if (mApp) mApp->Draw();
 }
 
-const uint16_t* MyNonStaticAppWrapper::getIcon() {
+const uint16_t* DummyAppNonStaticAppWrapper::getIcon() {
     return &Icons::Dummy[0][0];
 }
 
-std::string MyNonStaticAppWrapper::GetName() const {
+std::string DummyAppNonStaticAppWrapper::GetName() const {
     return mName;
 }
 
-void MyNonStaticAppWrapper::SetName(const std::string& name) {
+void DummyAppNonStaticAppWrapper::SetName(const std::string& name) {
     mName = name;
 }
 
-void MyNonStaticAppWrapper::CloseApp() {
+void DummyAppNonStaticAppWrapper::CloseApp() {
     if (mApp) {
         delete mApp;
         mApp = nullptr;
     }
 }
 
-MyNonStaticAppWrapper::~MyNonStaticAppWrapper() {
+DummyAppNonStaticAppWrapper::~DummyAppNonStaticAppWrapper() {
     CloseApp();  // ensure cleanup
 }

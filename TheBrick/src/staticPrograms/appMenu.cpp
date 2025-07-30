@@ -50,7 +50,7 @@ void AppMenu::UpdateButtons(int button) {
 
 int rectX = 100;
 int rectY = 200;
-int rectRadius = 25;
+int rectRadius = 24;
 
 void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
     if(touches[0].type == SLIDE)
@@ -83,6 +83,7 @@ void AppMenu::Draw() {
     
     DrawBlurredPatch(0, 0, 240, 320);
     screenBuff->fillRect(rectX-rectRadius, rectY-rectRadius, rectRadius*2, rectRadius*2, TFT_RED);
+    screenBuff->pushImage(rectX-rectRadius, rectY-rectRadius, rectRadius*2, rectRadius*2, DummyAppNonStaticAppWrapper::Get().getIcon());
 }
 
 

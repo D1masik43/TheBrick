@@ -4,12 +4,12 @@
 #include "System/systemImages.h"
 
 
-class MyNonStaticAppWrapper : public StaticApp {
+class DummyAppNonStaticAppWrapper : public StaticApp {
 public:
-    static MyNonStaticAppWrapper &Get(std::string name = "MainMenu");
+    static DummyAppNonStaticAppWrapper &Get(std::string name = "MainMenu");
 
-    MyNonStaticAppWrapper(const MyNonStaticAppWrapper &) = delete;
-    MyNonStaticAppWrapper &operator=(const MyNonStaticAppWrapper &) = delete;
+    DummyAppNonStaticAppWrapper(const DummyAppNonStaticAppWrapper &) = delete;
+    DummyAppNonStaticAppWrapper &operator=(const DummyAppNonStaticAppWrapper &) = delete;
 
     void Setup() override;
     void Loop() override;
@@ -23,10 +23,10 @@ public:
 
     void CloseApp() override;
 
-    ~MyNonStaticAppWrapper();
+    ~DummyAppNonStaticAppWrapper();
 
 private:
-    MyNonStaticAppWrapper(std::string name);
+    DummyAppNonStaticAppWrapper(std::string name);
     DummyNonStaticApp* mApp = nullptr;
     std::string mName;
 };
