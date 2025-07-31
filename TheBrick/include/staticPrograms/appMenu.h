@@ -26,6 +26,8 @@ class AppMenu : public StaticApp
   private:
     AppMenu(std::string name);
 
+    void CheckAppTap(int xTouch, int yTouch);
+
     TFT_eSprite *screenBuff;
 
     AppBase *appList[6][3] = {

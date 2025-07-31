@@ -54,6 +54,23 @@ void AppMenu::UpdateButtons(int button) {
     }
 }
 
+void AppMenu::CheckAppTap(int xTouch, int yTouch) {
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+
+            if (xTouch >= x && xTouch < x + iconSize &&
+                yTouch >= y && yTouch < y + iconSize) {
+
+                SystemCommon::Get().SetNextApp(appList[row][col]);
+                return;
+            }
+        }
+    }
+}
+
+
 void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
     if (touches[0].type == SLIDE_BEGIN) {
         slideStartY = touches[0].y;
@@ -67,17 +84,14 @@ void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
         }
     } else if (touches[0].type == SLIDE_END) {
         isSliding = false;
+    } else if (touches[0].type == TAP) {
+        CheckAppTap(touches[0].x, touches[0].y);
     }
 }
 
-
-
 void AppMenu::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
-
 }
-
-static uint16_t lineBuf[SCREEN_WIDTH]; // in internal RAM
 
 void AppMenu::Draw() {
         screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaperBlurred);
