@@ -29,4 +29,25 @@ class AppMenu : public StaticApp
     void DrawBlurredPatch(int x0, int y0, int w, int h);
 
     TFT_eSprite *screenBuff;
+
+    AppBase *appList[6][3] = {
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+    }; 
+
+    int startPoint = 36;
+    int iconSize = 48;
+    int paddingIcons = 24 + iconSize;
+    int paddingX = 24;
+
+    int totalOffsetY = 0;
+    int slideStartY = 0;
+    int lastSlideY = 0;
+    bool isSliding = false;
+
+
 };

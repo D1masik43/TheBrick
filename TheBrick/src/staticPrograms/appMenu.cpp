@@ -48,20 +48,23 @@ void AppMenu::UpdateButtons(int button) {
     }
 }
 
-int rectX = 100;
-int rectY = 200;
-int rectRadius = 24;
-
 void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
-    if(touches[0].type == SLIDE)
-    {
-        if(((touches[0].x > rectX-rectRadius) || (touches[0].x < rectX+rectRadius)) && ((touches[0].y > rectY-rectRadius) | (touches[0].y < rectY+rectRadius)))
-        {
-            rectX = touches[0].x;
-            rectY = touches[0].y;
+    if (touches[0].type == SLIDE_BEGIN) {
+        slideStartY = touches[0].y;
+        lastSlideY = touches[0].y;
+        isSliding = true;
+    } else if (touches[0].type == SLIDE) {
+        if (isSliding) {
+            int delta = touches[0].y - lastSlideY;
+            totalOffsetY += delta;
+            lastSlideY = touches[0].y;
         }
+    } else if (touches[0].type == SLIDE_END) {
+        isSliding = false;
     }
 }
+
+
 
 void AppMenu::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
@@ -80,13 +83,16 @@ void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
 }
 
 void AppMenu::Draw() {
-    
     DrawBlurredPatch(0, 0, 240, 320);
-    screenBuff->fillRect(rectX-rectRadius, rectY-rectRadius, rectRadius*2, rectRadius*2, TFT_RED);
-    screenBuff->pushImage(rectX-rectRadius, rectY-rectRadius, rectRadius*2, rectRadius*2, DummyAppNonStaticAppWrapper::Get().getIcon());
+
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+            screenBuff->pushImage(x, y, iconSize, iconSize, appList[row][col]->getIcon());
+        }
+    }
 }
-
-
 
 const uint16_t *AppMenu::getIcon() {
     return nullptr;

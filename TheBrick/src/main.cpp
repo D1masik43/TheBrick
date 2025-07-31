@@ -52,7 +52,7 @@ void setup() {
         Serial.println("Failed to allocate wallpaper in PSRAM");
         return;
     }
-    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 10);
+    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 6);
 }
 
 void loop() {

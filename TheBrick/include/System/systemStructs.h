@@ -3,8 +3,10 @@
 enum TouchType {
     NONE,
     TAP,
-    SLIDE
-}; 
+    SLIDE,
+    SLIDE_BEGIN,
+    SLIDE_END
+};
 
 struct TouchPoint {
     int x;

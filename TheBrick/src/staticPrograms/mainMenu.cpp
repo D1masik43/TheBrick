@@ -49,7 +49,7 @@ void MainMenu::UpdateButtons(int button) {
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-
+    Serial.println(count);
     for (int i = 0; i < count; ++i) {
     
         switch (touches[i].type) {
@@ -73,6 +73,30 @@ void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
         Serial.print(", type=");
                 Serial.println("SLIDE");
                 break;
+                case SLIDE_BEGIN:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE_BEGIN");
+                break;
+                case SLIDE_END:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE_END");
+                break;
+            case NONE:
+            Serial.println("NONE");
+
+            break;
             default:
                 break;
         }
