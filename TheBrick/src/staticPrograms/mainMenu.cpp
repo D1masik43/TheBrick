@@ -108,23 +108,11 @@ void MainMenu::Setup() {
 
 }
 
-void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
-    for (int y = y0; y < y0 + h; y++) {
-        for (int x = x0; x < x0 + w; x++) {
-            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-                uint16_t p = wallpaperBlurred[y][x];
-                screenBuff->drawPixel(x, y, p);
-            }
-        }
-    }
-}
-
-
 void MainMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
     
-    DrawBlurredPatch(0, 0, 240, 20);
-     size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    screenBuff->pushImage(0, 0, 240, 20, (const uint16_t*)wallpaperBlurred);
+    size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
 
     screenBuff->setTextColor(TFT_WHITE,TFT_BLACK);

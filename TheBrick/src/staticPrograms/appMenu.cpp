@@ -10,8 +10,14 @@ AppMenu::AppMenu(std::string name) : StaticApp(name) {
 }
 
 void AppMenu::Loop() {
+    uint32_t now = millis();
     Draw();
+    uint32_t frameTime = millis() - now;
+    if (frameTime > 0) {
+        currentFPS = 1000.0f / frameTime;
+    }
 }
+
 
 void AppMenu::UpdateButtons(int button) {
     switch(button) {
@@ -71,19 +77,10 @@ void AppMenu::Setup() {
 
 }
 
-void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
-    for (int y = y0; y < y0 + h; y++) {
-        for (int x = x0; x < x0 + w; x++) {
-            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-                uint16_t p = wallpaperBlurred[y][x];
-                screenBuff->drawPixel(x, y, p);
-            }
-        }
-    }
-}
+static uint16_t lineBuf[SCREEN_WIDTH]; // in internal RAM
 
 void AppMenu::Draw() {
-    DrawBlurredPatch(0, 0, 240, 320);
+        screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaperBlurred);
 
     for (int col = 0; col < 6; col++) {
         for (int row = 0; row < 3; row++) {
@@ -92,6 +89,11 @@ void AppMenu::Draw() {
             screenBuff->pushImage(x, y, iconSize, iconSize, appList[row][col]->getIcon());
         }
     }
+
+    screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
+    screenBuff->setCursor(5, 5);
+    screenBuff->setTextSize(1);
+    screenBuff->printf("FPS: %.1f", currentFPS);
 }
 
 const uint16_t *AppMenu::getIcon() {

@@ -26,8 +26,6 @@ class AppMenu : public StaticApp
   private:
     AppMenu(std::string name);
 
-    void DrawBlurredPatch(int x0, int y0, int w, int h);
-
     TFT_eSprite *screenBuff;
 
     AppBase *appList[6][3] = {
@@ -48,6 +46,10 @@ class AppMenu : public StaticApp
     int slideStartY = 0;
     int lastSlideY = 0;
     bool isSliding = false;
+
+    uint32_t lastDrawTime = 0;
+    float currentFPS = 0;
+
 
 
 };
