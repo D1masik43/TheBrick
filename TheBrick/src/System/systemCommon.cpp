@@ -42,8 +42,9 @@ void SystemCommon::SetNextApp(AppBase* app) {
     nextApp = app;
 }
 
-void SystemCommon::ProcessAppSwitch() {
+void SystemCommon::ProcessAppSwitch() { 
     if (nextApp != nullptr) {
+        currentApp->CloseApp();
         currentApp = nextApp;
         currentApp->Setup();
         nextApp = nullptr;

@@ -46,6 +46,7 @@ void DummyAppNonStaticAppWrapper::SetName(const std::string& name) {
 
 void DummyAppNonStaticAppWrapper::CloseApp() {
     if (mApp) {
+        mApp->CloseApp();
         delete mApp;
         mApp = nullptr;
     }

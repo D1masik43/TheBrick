@@ -46,6 +46,7 @@ void CameraAppNonStaticAppWrapper::SetName(const std::string& name) {
 
 void CameraAppNonStaticAppWrapper::CloseApp() {
     if (mApp) {
+        mApp->CloseApp();
         delete mApp;
         mApp = nullptr;
     }
