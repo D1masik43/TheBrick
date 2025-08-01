@@ -1,10 +1,7 @@
 #pragma once
 #include "appTemplates/staticApp.h"
-#include "System/systemDrivers.h"
 #include <TFT_eSPI.h>
-#include "System/systemStructs.h"
-#include "System/systemImages.h"
-#include "staticPrograms/mainMenu.h"
+class Mainmenu;
 
 class SystemCommon : public StaticApp
 {

@@ -2,8 +2,7 @@
 #include "System/systemStructs.h"
 #include <Arduino.h>
 #include <cmath>
-#include "System/systemDrivers.h"
-#include "System/systemCommon.h"
+#include "System/systemGlobals.h"
 
 extern QueueHandle_t touchEventQueue;
 

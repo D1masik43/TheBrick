@@ -2,10 +2,9 @@
 #include "appTemplates/staticApp.h"
 #include <TFT_eSPI.h>
 #include <Adafruit_MCP23X17.h>
-#include "System/systemStructs.h"
 #include "System/buttonHandler.h"
-#include "System/systemDefines.h"
 #include "System/touchHandler.h"
+#include "System/systemGlobals.h"
 
 class SystemDrivers : public StaticApp
 {

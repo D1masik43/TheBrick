@@ -1,6 +1,11 @@
 #pragma once
 
 #include "appTemplates/nonStaticApp.h"
+#include "System/systemGlobals.h"
+
+class Mainmenu;
+class Appmenu;
+
 
 class DummyNonStaticApp : public NonStaticApp {
 public:
@@ -16,6 +21,6 @@ public:
     static const uint16_t* StaticIcon();  // For wrapper
 
 private:
-    // Any dummy state if needed
+    TFT_eSprite *screenBuff;
 };
     

@@ -1,4 +1,5 @@
 #include "System/systemCommon.h"
+#include "staticPrograms/mainMenu.h"
 
 AppBase* SystemCommon::currentApp = &MainMenu::Get();
 AppBase* SystemCommon::nextApp = nullptr; 
