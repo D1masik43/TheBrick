@@ -23,6 +23,8 @@ class AppMenu : public StaticApp
 
     const uint16_t *getIcon();
 
+    void ScrollToSelected();
+
   private:
     AppMenu(std::string name);
 
@@ -58,5 +60,7 @@ class AppMenu : public StaticApp
     int topPadding = 32;
     int bottomPadding = 0;
 
+    int selectedRow = 0;
+    int selectedCol = 0;
 
 };

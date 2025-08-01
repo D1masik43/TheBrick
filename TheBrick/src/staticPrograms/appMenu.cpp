@@ -18,41 +18,54 @@ void AppMenu::Loop() {
     }
 }
 
+void AppMenu::ScrollToSelected() {
+    int iconY = selectedCol * paddingIcons + startPoint;
+
+    // Center the icon: offset needed to bring icon to vertical center
+    int centeredOffset = -(iconY - (SCREEN_HEIGHT / 2 - iconSize / 2));
+
+    // Clamp to scroll limits
+    if (centeredOffset < -maxOffsetY) centeredOffset = -maxOffsetY;
+    if (centeredOffset > minOffsetY) centeredOffset = minOffsetY;
+
+    totalOffsetY = centeredOffset;
+}
+
+
 
 void AppMenu::UpdateButtons(int button) {
+    bool changed = false;
+
     switch(button) {
         case BUTTON_UP:
-
+            if (selectedCol > 0) { selectedCol--; changed = true; }
             break;
         case BUTTON_DOWN:
-
+            if (selectedCol < 5) { selectedCol++; changed = true; }
             break;
         case BUTTON_LEFT:
-
+            if (selectedRow > 0) { selectedRow--; changed = true; }
             break;
         case BUTTON_RIGHT:
-
+            if (selectedRow < 2) { selectedRow++; changed = true; }
             break;
         case BUTTON_IN:
-
+            SystemCommon::Get().SetNextApp(appList[selectedRow][selectedCol]);
             break;
         case BUTTON_BACK:
-            SystemCommon::Get().SetNextApp(&MainMenu::Get());
-            break;
         case BUTTON_HOME:
             SystemCommon::Get().SetNextApp(&MainMenu::Get());
             break;
-        case BUTTON_KEY1:
-
-            break;
-        case BUTTON_KEY2:
-
-            break;
         default:
+            break;
+    }
 
-        break;
+    if (changed) {
+        ScrollToSelected();
     }
 }
+
+
 
 void AppMenu::CheckAppTap(int xTouch, int yTouch) {
     for (int col = 0; col < 6; col++) {
@@ -118,6 +131,19 @@ void AppMenu::Draw() {
     const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + (296 * SCREEN_WIDTH);
     screenBuff->pushImage(0, 300, SCREEN_WIDTH, 20, bottomPart);
 
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+
+            screenBuff->pushImage(x, y, iconSize, iconSize, appList[row][col]->getIcon());
+
+            if (row == selectedRow && col == selectedCol) {
+                screenBuff->drawRect(x - 2, y - 2, iconSize + 4, iconSize + 4, TFT_YELLOW);
+                screenBuff->drawRect(x - 3, y - 3, iconSize + 6, iconSize + 6, TFT_YELLOW);
+            }
+        }
+    }
     
     screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
     screenBuff->setCursor(5, 5);
