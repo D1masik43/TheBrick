@@ -1,15 +1,15 @@
 #pragma once
 #include "appTemplates/staticApp.h"
-#include "nonStaticPrograms/dummy.h"
+#include "nonStaticPrograms/camera.h"
 #include "System/systemImages.h"
 
 
-class DummyAppNonStaticAppWrapper : public StaticApp {
+class CameraAppNonStaticAppWrapper : public StaticApp {
 public:
-    static DummyAppNonStaticAppWrapper &Get(std::string name = "Dummy");
+    static CameraAppNonStaticAppWrapper &Get(std::string name = "Camera");
 
-    DummyAppNonStaticAppWrapper(const DummyAppNonStaticAppWrapper &) = delete;
-    DummyAppNonStaticAppWrapper &operator=(const DummyAppNonStaticAppWrapper &) = delete;
+    CameraAppNonStaticAppWrapper(const CameraAppNonStaticAppWrapper &) = delete;
+    CameraAppNonStaticAppWrapper &operator=(const CameraAppNonStaticAppWrapper &) = delete;
 
     void Setup() override;
     void Loop() override;
@@ -23,10 +23,10 @@ public:
 
     void CloseApp() override;
 
-    ~DummyAppNonStaticAppWrapper();
+    ~CameraAppNonStaticAppWrapper();
 
 private:
-    DummyAppNonStaticAppWrapper(std::string name);
-    DummyNonStaticApp* mApp = nullptr;
+    CameraAppNonStaticAppWrapper(std::string name);
+    CameraNonStaticApp* mApp = nullptr;
     std::string mName;
 };

@@ -10,7 +10,7 @@
 class AppMenu : public StaticApp
 {
   public:
-    static AppMenu &Get(std::string name = "MainMenu");
+    static AppMenu &Get(std::string name = "AppMenu");
 
     AppMenu(const AppMenu &) = delete;
     AppMenu &operator=(const AppMenu &) = delete;
@@ -31,7 +31,7 @@ class AppMenu : public StaticApp
     TFT_eSprite *screenBuff;
 
     AppBase *appList[6][3] = {
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&CameraAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
