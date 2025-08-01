@@ -52,6 +52,11 @@ class AppMenu : public StaticApp
     uint32_t lastDrawTime = 0;
     float currentFPS = 0;
 
+    int minOffsetY = 0;
+    int maxOffsetY;
+
+    int topPadding = 32;
+    int bottomPadding = 0;
 
 
 };

@@ -77,11 +77,14 @@ void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
         lastSlideY = touches[0].y;
         isSliding = true;
     } else if (touches[0].type == SLIDE) {
-        if (isSliding) {
-            int delta = touches[0].y - lastSlideY;
-            totalOffsetY += delta;
-            lastSlideY = touches[0].y;
-        }
+    if (isSliding) {
+        int delta = touches[0].y - lastSlideY;
+        totalOffsetY += delta;
+        lastSlideY = touches[0].y;
+
+        if (totalOffsetY < -maxOffsetY) totalOffsetY = -maxOffsetY;
+        if (totalOffsetY > minOffsetY) totalOffsetY = minOffsetY;
+    }
     } else if (touches[0].type == SLIDE_END) {
         isSliding = false;
     } else if (touches[0].type == TAP) {
@@ -91,10 +94,17 @@ void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
 
 void AppMenu::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
+
+    int totalCols = 6;
+    int visibleHeight = SCREEN_HEIGHT - topPadding - bottomPadding;
+    int contentHeight = totalCols * paddingIcons;
+    
+    maxOffsetY = std::max(0, contentHeight - visibleHeight);
 }
 
+
 void AppMenu::Draw() {
-        screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaperBlurred);
+    screenBuff->pushImage(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (const uint16_t*)wallpaperBlurred);
 
     for (int col = 0; col < 6; col++) {
         for (int row = 0; row < 3; row++) {
@@ -104,6 +114,11 @@ void AppMenu::Draw() {
         }
     }
 
+    screenBuff->pushImage(0, 0, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
+    const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + (296 * SCREEN_WIDTH);
+    screenBuff->pushImage(0, 300, SCREEN_WIDTH, 20, bottomPart);
+
+    
     screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
     screenBuff->setCursor(5, 5);
     screenBuff->setTextSize(1);
