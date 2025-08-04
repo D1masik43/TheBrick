@@ -21,6 +21,8 @@ class AppMenu : public StaticApp
     void Setup() override;
     void Draw() override;
 
+    void setStartPoint(int newPoint);
+
     const uint16_t *getIcon();
 
     void ScrollToSelected();

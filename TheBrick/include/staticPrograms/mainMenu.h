@@ -28,4 +28,7 @@ class MainMenu : public StaticApp
     MainMenu(std::string name);
 
     TFT_eSprite *screenBuff;
+
+    bool transitioningToAppMenu = false;
+    int transitionY = 0;
 };

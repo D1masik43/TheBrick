@@ -10,8 +10,25 @@ MainMenu::MainMenu(std::string name) : StaticApp(name) {
 }
 
 void MainMenu::Loop() {
+    if (transitioningToAppMenu) {
+
+        transitionY -= 20;
+        if (transitionY <= 36) {
+            transitionY = 36;
+            AppMenu::Get().setStartPoint(36);
+            SystemCommon::Get().SetNextApp(&AppMenu::Get());
+            transitioningToAppMenu = false;
+            return;
+        }
+
+        AppMenu::Get().setStartPoint(transitionY);
+        AppMenu::Get().Draw();
+        return;
+    }
+
     Draw();
 }
+
 
 void MainMenu::UpdateButtons(int button) {
     switch(button) {
@@ -49,56 +66,18 @@ void MainMenu::UpdateButtons(int button) {
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-    Serial.println(count);
-    for (int i = 0; i < count; ++i) {
-    
-        switch (touches[i].type) {
-            case TAP:
-            Serial.print("Touch ");
-        Serial.print(i);
-        Serial.print(": x=");
-        Serial.print(touches[i].x);
-        Serial.print(", y=");
-        Serial.print(touches[i].y);
-        Serial.print(", type=");
-                Serial.println("TAP");
-                break;
-            case SLIDE:
-            Serial.print("Touch ");
-        Serial.print(i);
-        Serial.print(": x=");
-        Serial.print(touches[i].x);
-        Serial.print(", y=");
-        Serial.print(touches[i].y);
-        Serial.print(", type=");
-                Serial.println("SLIDE");
-                break;
-                case SLIDE_BEGIN:
-            Serial.print("Touch ");
-        Serial.print(i);
-        Serial.print(": x=");
-        Serial.print(touches[i].x);
-        Serial.print(", y=");
-        Serial.print(touches[i].y);
-        Serial.print(", type=");
-                Serial.println("SLIDE_BEGIN");
-                break;
-                case SLIDE_END:
-            Serial.print("Touch ");
-        Serial.print(i);
-        Serial.print(": x=");
-        Serial.print(touches[i].x);
-        Serial.print(", y=");
-        Serial.print(touches[i].y);
-        Serial.print(", type=");
-                Serial.println("SLIDE_END");
-                break;
-            case NONE:
-            Serial.println("NONE");
+    static int startY = 0;
 
-            break;
-            default:
-                break;
+    if (touches[0].type == SLIDE_BEGIN) {
+        startY = touches[0].y;
+    } else if (touches[0].type == SLIDE_END) {
+        int delta = startY - touches[0].y;
+
+        // If started from bottom 50px and moved up > 50px
+        if (startY > SCREEN_HEIGHT - 50 && delta > 50) {
+            transitioningToAppMenu = true;
+            transitionY = SCREEN_HEIGHT;
+            AppMenu::Get().setStartPoint(transitionY);
         }
     }
 }
