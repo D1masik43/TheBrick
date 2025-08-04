@@ -10,7 +10,7 @@ public:
     void UpdateTouch(const TouchPoint* touches, int count) override;
     void Setup() override;
     void Draw() override;
-    const unsigned char* getIcon() override;
+    const uint16_t* getIcon() override;
     
     std::string GetName() const override;
     void SetName(const std::string& name) override;

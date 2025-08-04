@@ -49,7 +49,7 @@ void MainMenu::UpdateButtons(int button) {
 }
 
 void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
-
+    Serial.println(count);
     for (int i = 0; i < count; ++i) {
     
         switch (touches[i].type) {
@@ -73,6 +73,30 @@ void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
         Serial.print(", type=");
                 Serial.println("SLIDE");
                 break;
+                case SLIDE_BEGIN:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE_BEGIN");
+                break;
+                case SLIDE_END:
+            Serial.print("Touch ");
+        Serial.print(i);
+        Serial.print(": x=");
+        Serial.print(touches[i].x);
+        Serial.print(", y=");
+        Serial.print(touches[i].y);
+        Serial.print(", type=");
+                Serial.println("SLIDE_END");
+                break;
+            case NONE:
+            Serial.println("NONE");
+
+            break;
             default:
                 break;
         }
@@ -84,23 +108,11 @@ void MainMenu::Setup() {
 
 }
 
-void MainMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
-    for (int y = y0; y < y0 + h; y++) {
-        for (int x = x0; x < x0 + w; x++) {
-            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-                uint16_t p = wallpaperBlurred[y][x];
-                screenBuff->drawPixel(x, y, p);
-            }
-        }
-    }
-}
-
-
 void MainMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
     
-    DrawBlurredPatch(0, 0, 240, 20);
-     size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    screenBuff->pushImage(0, 0, 240, 20, (const uint16_t*)wallpaperBlurred);
+    size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
     size_t free_psram = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
 
     screenBuff->setTextColor(TFT_WHITE,TFT_BLACK);
@@ -111,7 +123,7 @@ void MainMenu::Draw() {
 
 
 
-const unsigned char *MainMenu::getIcon() {
+const uint16_t *MainMenu::getIcon() {
     return nullptr;
 }
 

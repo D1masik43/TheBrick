@@ -10,74 +10,147 @@ AppMenu::AppMenu(std::string name) : StaticApp(name) {
 }
 
 void AppMenu::Loop() {
+    uint32_t now = millis();
     Draw();
-}
-
-void AppMenu::UpdateButtons(int button) {
-    switch(button) {
-        case BUTTON_UP:
-
-            break;
-        case BUTTON_DOWN:
-
-            break;
-        case BUTTON_LEFT:
-
-            break;
-        case BUTTON_RIGHT:
-
-            break;
-        case BUTTON_IN:
-
-            break;
-        case BUTTON_BACK:
-            SystemCommon::Get().SetNextApp(&MainMenu::Get());
-            break;
-        case BUTTON_HOME:
-            SystemCommon::Get().SetNextApp(&MainMenu::Get());
-            break;
-        case BUTTON_KEY1:
-
-            break;
-        case BUTTON_KEY2:
-
-            break;
-        default:
-
-        break;
+    uint32_t frameTime = millis() - now;
+    if (frameTime > 0) {
+        currentFPS = 1000.0f / frameTime;
     }
 }
 
-void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
-   
+void AppMenu::ScrollToSelected() {
+    int iconY = selectedCol * paddingIcons + startPoint;
+
+    // Center the icon: offset needed to bring icon to vertical center
+    int centeredOffset = -(iconY - (SCREEN_HEIGHT / 2 - iconSize / 2));
+
+    // Clamp to scroll limits
+    if (centeredOffset < -maxOffsetY) centeredOffset = -maxOffsetY;
+    if (centeredOffset > minOffsetY) centeredOffset = minOffsetY;
+
+    totalOffsetY = centeredOffset;
 }
 
-void AppMenu::Setup() {
-    screenBuff = &SystemDrivers::Get().GetScreenBuff();
 
+
+void AppMenu::UpdateButtons(int button) {
+    bool changed = false;
+
+    switch(button) {
+        case BUTTON_UP:
+            if (selectedCol > 0) { selectedCol--; changed = true; }
+            break;
+        case BUTTON_DOWN:
+            if (selectedCol < 5) { selectedCol++; changed = true; }
+            break;
+        case BUTTON_LEFT:
+            if (selectedRow > 0) { selectedRow--; changed = true; }
+            break;
+        case BUTTON_RIGHT:
+            if (selectedRow < 2) { selectedRow++; changed = true; }
+            break;
+        case BUTTON_IN:
+            SystemCommon::Get().SetNextApp(appList[selectedRow][selectedCol]);
+            break;
+        case BUTTON_BACK:
+        case BUTTON_HOME:
+            SystemCommon::Get().SetNextApp(&MainMenu::Get());
+            break;
+        default:
+            break;
+    }
+
+    if (changed) {
+        ScrollToSelected();
+    }
 }
 
-void AppMenu::DrawBlurredPatch(int x0, int y0, int w, int h) {
-    for (int y = y0; y < y0 + h; y++) {
-        for (int x = x0; x < x0 + w; x++) {
-            if (x >= 0 && x < SCREEN_WIDTH && y >= 0 && y < SCREEN_HEIGHT) {
-                uint16_t p = wallpaperBlurred[y][x];
-                screenBuff->drawPixel(x, y, p);
+
+
+void AppMenu::CheckAppTap(int xTouch, int yTouch) {
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+
+            if (xTouch >= x && xTouch < x + iconSize &&
+                yTouch >= y && yTouch < y + iconSize) {
+
+                SystemCommon::Get().SetNextApp(appList[row][col]);
+                return;
             }
         }
     }
 }
 
 
-void AppMenu::Draw() {
-   // screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);\
-    
-    DrawBlurredPatch(0, 0, 240, 320);
+void AppMenu::UpdateTouch(const TouchPoint* touches, int count) {
+    if (touches[0].type == SLIDE_BEGIN) {
+        slideStartY = touches[0].y;
+        lastSlideY = touches[0].y;
+        isSliding = true;
+    } else if (touches[0].type == SLIDE) {
+    if (isSliding) {
+        int delta = touches[0].y - lastSlideY;
+        totalOffsetY += delta;
+        lastSlideY = touches[0].y;
 
+        if (totalOffsetY < -maxOffsetY) totalOffsetY = -maxOffsetY;
+        if (totalOffsetY > minOffsetY) totalOffsetY = minOffsetY;
+    }
+    } else if (touches[0].type == SLIDE_END) {
+        isSliding = false;
+    } else if (touches[0].type == TAP) {
+        CheckAppTap(touches[0].x, touches[0].y);
+    }
+}
+
+void AppMenu::Setup() {
+    screenBuff = &SystemDrivers::Get().GetScreenBuff();
+
+    int totalCols = 6;
+    int visibleHeight = SCREEN_HEIGHT - topPadding - bottomPadding;
+    int contentHeight = totalCols * paddingIcons;
+    
+    maxOffsetY = std::max(0, contentHeight - visibleHeight);
 }
 
 
+void AppMenu::Draw() {
+    screenBuff->pushImage(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (const uint16_t*)wallpaperBlurred);
 
-const unsigned char *AppMenu::getIcon() {
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+            screenBuff->pushImage(x, y, iconSize, iconSize, appList[row][col]->getIcon());
+        }
+    }
+
+    screenBuff->pushImage(0, 0, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
+    const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + (296 * SCREEN_WIDTH);
+    screenBuff->pushImage(0, 300, SCREEN_WIDTH, 20, bottomPart);
+
+    for (int col = 0; col < 6; col++) {
+        for (int row = 0; row < 3; row++) {
+            int x = row * paddingIcons + paddingX;
+            int y = col * paddingIcons + totalOffsetY + startPoint;
+
+            screenBuff->pushImage(x, y, iconSize, iconSize, appList[row][col]->getIcon());
+
+            if (row == selectedRow && col == selectedCol) {
+                screenBuff->drawRect(x - 2, y - 2, iconSize + 4, iconSize + 4, TFT_YELLOW);
+                screenBuff->drawRect(x - 3, y - 3, iconSize + 6, iconSize + 6, TFT_YELLOW);
+            }
+        }
+    }
+    
+    screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
+    screenBuff->setCursor(5, 5);
+    screenBuff->setTextSize(1);
+    screenBuff->printf("FPS: %.1f", currentFPS);
+}
+
+const uint16_t *AppMenu::getIcon() {
     return nullptr;
 }

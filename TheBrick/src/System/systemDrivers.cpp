@@ -98,7 +98,7 @@ void SystemDrivers::Draw() {
 }
 
 
-const unsigned char *SystemDrivers::getIcon() {
+const uint16_t *SystemDrivers::getIcon() {
     return nullptr;
 }
 

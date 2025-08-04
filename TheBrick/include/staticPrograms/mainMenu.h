@@ -22,12 +22,10 @@ class MainMenu : public StaticApp
     void Setup() override;
     void Draw() override;
 
-    const unsigned char *getIcon();
+    const uint16_t *getIcon();
 
   private:
     MainMenu(std::string name);
-
-    void DrawBlurredPatch(int x0, int y0, int w, int h);
 
     TFT_eSprite *screenBuff;
 };

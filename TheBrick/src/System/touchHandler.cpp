@@ -3,8 +3,9 @@
 TouchPoint lastPoints[2];
 bool lastTouchValid[2] = { false, false };
 QueueHandle_t touchEventQueue;
+bool inSlide[2] = { false, false };
 
-bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 2) {
+bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 0) {
     return (std::abs(x1 - x2) > threshold) || (std::abs(y1 - y2) > threshold);
 }
 
@@ -20,36 +21,30 @@ void handleTouch() {
 
     // Touch 0
     if (touch.xy(&x, &y)) {
-        currentTouchValid[0] = true;
+    currentTouchValid[0] = true;
+    TouchType type = NONE;
 
-        // Only mark SLIDE if last was SLIDE AND moved enough from last point
-        TouchType type = NONE;
-        if (lastTouchValid[0]) {
-            if (lastPoints[0].type == SLIDE) {
-                if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
-                    type = SLIDE;
-                } else {
-                    // Still finger down but movement too small, no SLIDE yet
-                    type = NONE;
-                }
-            } else {
-                // Last valid but not slide yet: check if moved enough to start slide
-                if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
-                    type = SLIDE;
-                } else {
-                    type = NONE;
-                }
+    if (lastTouchValid[0]) {
+        if (inSlide[0]) {
+            if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
+                type = SLIDE;
             }
         } else {
-            // First touch: no slide, no tap, just NONE
-            type = NONE;
+            if (movedEnough(x, y, lastPoints[0].x, lastPoints[0].y)) {
+                type = SLIDE_BEGIN;
+                inSlide[0] = true;
+            }
         }
+    }
 
-        points[0] = { (int)x, (int)y, type };
+    points[0] = { (int)x, (int)y, type };
     } else if (lastTouchValid[0]) {
-        points[0] = { lastPoints[0].x, lastPoints[0].y, TAP };
+        TouchType type = inSlide[0] ? SLIDE_END : TAP;
+        points[0] = { lastPoints[0].x, lastPoints[0].y, type };
+        inSlide[0] = false;
         lastTouchValid[0] = false;
     }
+
 
     // Touch 1
     if (touch.touches() > 1 && touch.xy2(&x, &y)) {
@@ -95,8 +90,10 @@ void handleTouch() {
 }
 
 void touchTask(void *pvParameters) {
+    int hz = 30;
+    int tickMs = 1000 / hz;
     while (true) {
         handleTouch();
-        vTaskDelay(pdMS_TO_TICKS(10));  // 100Hz update rate
+        vTaskDelay(pdMS_TO_TICKS(tickMs));
     }
 }

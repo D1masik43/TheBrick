@@ -5,11 +5,12 @@
 #include "System/systemStructs.h"
 #include "System/systemImages.h"
 #include "System/systemCommon.h"
+#include "staticPrograms/allStaticPrograms.h"
 
 class AppMenu : public StaticApp
 {
   public:
-    static AppMenu &Get(std::string name = "MainMenu");
+    static AppMenu &Get(std::string name = "AppMenu");
 
     AppMenu(const AppMenu &) = delete;
     AppMenu &operator=(const AppMenu &) = delete;
@@ -20,12 +21,46 @@ class AppMenu : public StaticApp
     void Setup() override;
     void Draw() override;
 
-    const unsigned char *getIcon();
+    const uint16_t *getIcon();
+
+    void ScrollToSelected();
 
   private:
     AppMenu(std::string name);
 
-    void DrawBlurredPatch(int x0, int y0, int w, int h);
+    void CheckAppTap(int xTouch, int yTouch);
 
     TFT_eSprite *screenBuff;
+
+    AppBase *appList[6][3] = {
+      {&CameraAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+    }; 
+
+    int startPoint = 36;
+    int iconSize = 48;
+    int paddingIcons = 24 + iconSize;
+    int paddingX = 24;
+
+    int totalOffsetY = 0;
+    int slideStartY = 0;
+    int lastSlideY = 0;
+    bool isSliding = false;
+
+    uint32_t lastDrawTime = 0;
+    float currentFPS = 0;
+
+    int minOffsetY = 0;
+    int maxOffsetY;
+
+    int topPadding = 32;
+    int bottomPadding = 0;
+
+    int selectedRow = 0;
+    int selectedCol = 0;
+
 };

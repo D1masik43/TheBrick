@@ -22,7 +22,7 @@ void StaticApp::Draw() {
 
 }
 
-const unsigned char* StaticApp::getIcon() {
+const uint16_t* StaticApp::getIcon() {
     return nullptr;
 }
 

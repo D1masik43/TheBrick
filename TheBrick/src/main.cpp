@@ -16,7 +16,7 @@ void MakeBlurredWalpaper(int x0, int y0, int w, int h, int blurIntensity) {
                     int py = y + dy;
                     if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
                         uint16_t p = wallpaper[py][px];
-                         p = (p >> 8) | (p << 8);
+                        p = (p >> 8) | (p << 8);
                         r += (p >> 11) & 0x1F;
                         g += (p >> 5) & 0x3F;
                         b += p & 0x1F;
@@ -28,10 +28,12 @@ void MakeBlurredWalpaper(int x0, int y0, int w, int h, int blurIntensity) {
             g /= count;
             b /= count;
             uint16_t blurred = (r << 11) | (g << 5) | b;
+            blurred = (blurred >> 8) | (blurred << 8);
             wallpaperBlurred[y][x] = blurred;
         }
     }
 }
+
 
 void setup() {
   screenBuff = &SystemDrivers::Get().GetScreenBuff();
@@ -52,7 +54,7 @@ void setup() {
         Serial.println("Failed to allocate wallpaper in PSRAM");
         return;
     }
-    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 10);
+    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 6);
 }
 
 void loop() {

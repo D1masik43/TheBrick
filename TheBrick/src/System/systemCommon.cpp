@@ -1,4 +1,5 @@
 #include "System/systemCommon.h"
+#include "staticPrograms/mainMenu.h"
 
 AppBase* SystemCommon::currentApp = &MainMenu::Get();
 AppBase* SystemCommon::nextApp = nullptr; 
@@ -41,14 +42,15 @@ void SystemCommon::SetNextApp(AppBase* app) {
     nextApp = app;
 }
 
-void SystemCommon::ProcessAppSwitch() {
+void SystemCommon::ProcessAppSwitch() { 
     if (nextApp != nullptr) {
+        currentApp->CloseApp();
         currentApp = nextApp;
         currentApp->Setup();
         nextApp = nullptr;
     }
 }
 
-const unsigned char *SystemCommon::getIcon() {
+const uint16_t *SystemCommon::getIcon() {
     return nullptr;
 }
