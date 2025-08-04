@@ -1,6 +1,7 @@
 #pragma once
 #include "appTemplates/staticApp.h"
 #include <TFT_eSPI.h>
+
 class Mainmenu;
 
 class SystemCommon : public StaticApp

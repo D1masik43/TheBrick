@@ -117,7 +117,7 @@ void AppMenu::Setup() {
 
 
 void AppMenu::Draw() {
-    screenBuff->pushImage(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, (const uint16_t*)wallpaperBlurred);
+    screenBuff->pushImage(0, startPoint-36, SCREEN_WIDTH, SCREEN_HEIGHT, (const uint16_t*)wallpaperBlurred);
 
     for (int col = 0; col < 6; col++) {
         for (int row = 0; row < 3; row++) {
@@ -127,9 +127,9 @@ void AppMenu::Draw() {
         }
     }
 
-    screenBuff->pushImage(0, 0, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
+    screenBuff->pushImage(0, startPoint-36, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
     const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + (296 * SCREEN_WIDTH);
-    screenBuff->pushImage(0, 300, SCREEN_WIDTH, 20, bottomPart);
+    screenBuff->pushImage(0, startPoint + 300, SCREEN_WIDTH, 20, bottomPart);
 
     for (int col = 0; col < 6; col++) {
         for (int row = 0; row < 3; row++) {
@@ -153,4 +153,9 @@ void AppMenu::Draw() {
 
 const uint16_t *AppMenu::getIcon() {
     return nullptr;
+}
+
+void AppMenu::setStartPoint(int newPoint)
+{
+    startPoint = newPoint;
 }
