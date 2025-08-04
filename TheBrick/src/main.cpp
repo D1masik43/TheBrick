@@ -40,6 +40,7 @@ void setup() {
 
   SystemDrivers::Get().Setup();
   SystemCommon::Get().GetCurrentApp()->Setup();
+  AppMenu::Get().Setup();
 
     wallpaper = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
     if (!wallpaper) {
@@ -47,7 +48,7 @@ void setup() {
         return;
     }
     // Copy from flash (initialized wallpaper) to PSRAM buffer
-  memcpy(wallpaper, defaultWallpaper, 320 * 240 * sizeof(uint16_t));
+    memcpy(wallpaper, defaultWallpaper, 320 * 240 * sizeof(uint16_t));
 
     wallpaperBlurred = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
     if (!wallpaperBlurred) {

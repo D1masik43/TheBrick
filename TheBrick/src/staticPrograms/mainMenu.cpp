@@ -84,7 +84,6 @@ void MainMenu::UpdateTouch(const TouchPoint* touches, int count) {
 
 void MainMenu::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
-
 }
 
 void MainMenu::Draw() {

@@ -127,10 +127,6 @@ void AppMenu::Draw() {
         }
     }
 
-    screenBuff->pushImage(0, startPoint-36, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
-    const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + (296 * SCREEN_WIDTH);
-    screenBuff->pushImage(0, startPoint + 300, SCREEN_WIDTH, 20, bottomPart);
-
     for (int col = 0; col < 6; col++) {
         for (int row = 0; row < 3; row++) {
             int x = row * paddingIcons + paddingX;
@@ -145,6 +141,12 @@ void AppMenu::Draw() {
         }
     }
     
+    screenBuff->pushImage(0, startPoint-36, SCREEN_WIDTH, 32, (const uint16_t*)wallpaperBlurred);
+    int wallpaperOffsetY = SCREEN_HEIGHT - 20;
+    const uint16_t* bottomPart = (const uint16_t*)wallpaperBlurred + wallpaperOffsetY * SCREEN_WIDTH;
+    screenBuff->pushImage(0, SCREEN_HEIGHT - 20, SCREEN_WIDTH, 20, bottomPart);
+
+
     screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
     screenBuff->setCursor(5, 5);
     screenBuff->setTextSize(1);
