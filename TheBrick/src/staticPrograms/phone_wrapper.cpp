@@ -1,50 +1,50 @@
-#include "staticPrograms/camera_wrapper.h"
+#include "staticPrograms/phone_wrapper.h"
 
-CameraAppNonStaticAppWrapper &CameraAppNonStaticAppWrapper::Get(std::string name) {
-    static CameraAppNonStaticAppWrapper instance(name);
+PhoneAppNonStaticAppWrapper &PhoneAppNonStaticAppWrapper::Get(std::string name) {
+    static PhoneAppNonStaticAppWrapper instance(name);
     return instance;
 }
 
-CameraAppNonStaticAppWrapper::CameraAppNonStaticAppWrapper(std::string name) : StaticApp(name) {
+PhoneAppNonStaticAppWrapper::PhoneAppNonStaticAppWrapper(std::string name) : StaticApp(name) {
 
 }
 
-void CameraAppNonStaticAppWrapper::Setup() {
+void PhoneAppNonStaticAppWrapper::Setup() {
     if (!mApp) {
-        mApp = new CameraNonStaticApp(mName);
+        mApp = new PhoneNonStaticApp(mName);
         mApp->Setup();
     }
 }
 
-void CameraAppNonStaticAppWrapper::Loop() {
+void PhoneAppNonStaticAppWrapper::Loop() {
     if (mApp) mApp->Loop();
 }
 
-void CameraAppNonStaticAppWrapper::UpdateButtons(int button) {
+void PhoneAppNonStaticAppWrapper::UpdateButtons(int button) {
     if (mApp) mApp->UpdateButtons(button);
 }
 
-void CameraAppNonStaticAppWrapper::UpdateTouch(const TouchPoint* touches, int count) {
+void PhoneAppNonStaticAppWrapper::UpdateTouch(const TouchPoint* touches, int count) {
     if (mApp) mApp->UpdateTouch(touches, count);
 }
 
-void CameraAppNonStaticAppWrapper::Draw() {
+void PhoneAppNonStaticAppWrapper::Draw() {
     if (mApp) mApp->Draw();
 }
 
-const uint16_t* CameraAppNonStaticAppWrapper::getIcon() {
-    return &Icons::Camera[0][0];
+const uint16_t* PhoneAppNonStaticAppWrapper::getIcon() {
+    return &Icons::Phone[0][0];
 }
 
-std::string CameraAppNonStaticAppWrapper::GetName() const {
+std::string PhoneAppNonStaticAppWrapper::GetName() const {
     return mName;
 }
 
-void CameraAppNonStaticAppWrapper::SetName(const std::string& name) {
+void PhoneAppNonStaticAppWrapper::SetName(const std::string& name) {
     mName = name;
 }
 
-void CameraAppNonStaticAppWrapper::CloseApp() {
+void PhoneAppNonStaticAppWrapper::CloseApp() {
     if (mApp) {
         mApp->CloseApp();
         delete mApp;
@@ -52,6 +52,6 @@ void CameraAppNonStaticAppWrapper::CloseApp() {
     }
 }
 
-CameraAppNonStaticAppWrapper::~CameraAppNonStaticAppWrapper() {
+PhoneAppNonStaticAppWrapper::~PhoneAppNonStaticAppWrapper() {
     CloseApp();
 }

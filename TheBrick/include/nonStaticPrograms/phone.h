@@ -7,9 +7,9 @@
 class Mainmenu;
 class Appmenu;
 
-class CameraNonStaticApp : public NonStaticApp {
+class PhoneNonStaticApp : public NonStaticApp {
 public:
-    CameraNonStaticApp(const std::string& name);
+    PhoneNonStaticApp(const std::string& name);
 
     void Loop() override;
     void UpdateButtons(int button) override;
@@ -24,5 +24,6 @@ public:
 
 private:
     TFT_eSprite *screenBuff;
+    HardwareSerial *sim800;
 };
     

@@ -20,6 +20,11 @@ Adafruit_MCP23X17 &SystemDrivers::GetMCP() {
     return mcp;
 }
 
+HardwareSerial &SystemDrivers::GetSim800() {
+    static HardwareSerial sim800(1);
+    return sim800;
+}
+
 arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &SystemDrivers::GetTouch() {
     static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> touch;
     return touch;
@@ -91,6 +96,13 @@ void SystemDrivers::Setup() {
 
     touchEventQueue = xQueueCreate(4, sizeof(TouchPoint[2]));  // Room for 4 touch events
     xTaskCreatePinnedToCore(touchTask, "TouchTask", 4096, NULL, 1, NULL, 0);
+
+    // ==== SIM800 UART ====
+    HardwareSerial &sim800 = GetSim800();
+    sim800.begin(9600, SERIAL_8N1, 0, 1); 
+    Serial.println("SIM800 UART started");
+    sim800.println("AT+CPIN=\"9205\"");
+
 }
 
 void SystemDrivers::Draw() {
