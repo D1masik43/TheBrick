@@ -2,31 +2,25 @@
 #include <TFT_eSPI.h>
 #include <RTClib.h>
 
-class SystemDrivers;
-
 class StatusBar {
 public:
     static StatusBar& Get();
-
     void Setup();
-    void Draw(TFT_eSprite& sprite, bool inMenu, uint16_t bg_color);
+    void Draw(TFT_eSprite& screenBuff, bool inMenu, uint16_t bg_color);
 
 private:
     StatusBar() = default;
     StatusBar(const StatusBar&) = delete;
     StatusBar& operator=(const StatusBar&) = delete;
 
-    String getTimeString();
-    int getBatteryPercent();
-    int getSim800SignalStrength();
-    bool isSim800Registered();
-
     RTC_DS3231* rtc = nullptr;
 
+    // cached values
     String cachedTime = "--:--";
-    unsigned long lastTimeUpdate = 0;
-
+    int cachedBattery = -1;
     int cachedBars = 0;
     bool cachedRegistered = false;
-    unsigned long lastSignalUpdate = 0;
+
+    // internal
+    void statusTask(void* param);
 };
