@@ -72,7 +72,7 @@ void PhoneNonStaticApp::Draw() {
         b.Draw(*screenBuff);
     }
 
-    screenBuff->pushSprite(0, 0);
+    StatusBar::Get().Draw(*screenBuff, false, TFT_BLACK);
 }
 
 void PhoneNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
