@@ -102,6 +102,9 @@ void PhoneNonStaticApp::handlePress(int id) {
             sim800->println(cmd);
             callState = CALL_DIALING;
         }
+        else{
+        sim800->println("ATA");
+        }
     } else if (id == 101) {
         // HANG
         sim800->println("ATH");

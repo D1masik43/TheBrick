@@ -30,6 +30,11 @@ arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &SystemDrivers::GetTouch() {
     return touch;
 }
 
+RTC_DS3231 &SystemDrivers::GetRTC() {
+    static RTC_DS3231 rtc;
+    return rtc;
+}
+
 SystemDrivers::SystemDrivers(std::string name) : StaticApp(name) {
 
 }
@@ -102,6 +107,18 @@ void SystemDrivers::Setup() {
     sim800.begin(9600, SERIAL_8N1, 0, 1); 
     Serial.println("SIM800 UART started");
     sim800.println("AT+CPIN=\"9205\"");
+
+    // ==== DS3231 ====
+    RTC_DS3231 &rtc = GetRTC();
+    if (!rtc.begin()) {
+        Serial.println("RTC NOT found");
+    } else {
+    Serial.println("RTC found");
+    if (rtc.lostPower()) {
+        Serial.println("RTC lost power, setting time!");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
+}
 
 }
 

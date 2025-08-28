@@ -5,6 +5,7 @@
 #include "System/buttonHandler.h"
 #include "System/touchHandler.h"
 #include "System/systemGlobals.h"
+#include <RTClib.h>
 
 class SystemDrivers : public StaticApp
 {
@@ -27,6 +28,8 @@ class SystemDrivers : public StaticApp
     static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &GetTouch();
     static TFT_eSprite &GetScreenBuff();
     static HardwareSerial &GetSim800();
+    static RTC_DS3231 &GetRTC();
+
 
   private:
     SystemDrivers(std::string name);
