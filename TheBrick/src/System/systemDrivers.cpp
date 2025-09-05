@@ -20,9 +20,19 @@ Adafruit_MCP23X17 &SystemDrivers::GetMCP() {
     return mcp;
 }
 
+HardwareSerial &SystemDrivers::GetSim800() {
+    static HardwareSerial sim800(1);
+    return sim800;
+}
+
 arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> &SystemDrivers::GetTouch() {
     static arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT> touch;
     return touch;
+}
+
+RTC_DS3231 &SystemDrivers::GetRTC() {
+    static RTC_DS3231 rtc;
+    return rtc;
 }
 
 SystemDrivers::SystemDrivers(std::string name) : StaticApp(name) {
@@ -91,6 +101,25 @@ void SystemDrivers::Setup() {
 
     touchEventQueue = xQueueCreate(4, sizeof(TouchPoint[2]));  // Room for 4 touch events
     xTaskCreatePinnedToCore(touchTask, "TouchTask", 4096, NULL, 1, NULL, 0);
+
+    // ==== SIM800 UART ====
+    HardwareSerial &sim800 = GetSim800();
+    sim800.begin(9600, SERIAL_8N1, 0, 1); 
+    Serial.println("SIM800 UART started");
+    sim800.println("AT+CPIN=\"9205\"");
+
+    // ==== DS3231 ====
+    RTC_DS3231 &rtc = GetRTC();
+    if (!rtc.begin()) {
+        Serial.println("RTC NOT found");
+    } else {
+    Serial.println("RTC found");
+    if (rtc.lostPower()) {
+        Serial.println("RTC lost power, setting time!");
+        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    }
+}
+
 }
 
 void SystemDrivers::Draw() {

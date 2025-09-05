@@ -35,7 +35,7 @@ class AppMenu : public StaticApp
     TFT_eSprite *screenBuff;
 
     AppBase *appList[6][3] = {
-      {&CameraAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
+      {&CameraAppNonStaticAppWrapper::Get(),&PhoneAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
       {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},

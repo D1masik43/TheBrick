@@ -56,6 +56,8 @@ void setup() {
         return;
     }
     MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 6);
+
+    StatusBar::Get().Setup();
 }
 
 void loop() {

@@ -147,11 +147,14 @@ void AppMenu::Draw() {
     screenBuff->pushImage(0, SCREEN_HEIGHT - 17, SCREEN_WIDTH, 20, bottomPart);
 
     
-
+    /*
     screenBuff->setTextColor(TFT_GREEN, TFT_BLACK);
     screenBuff->setCursor(5, 5);
     screenBuff->setTextSize(1);
     screenBuff->printf("FPS: %.1f", currentFPS);
+    */
+
+    StatusBar::Get().Draw(*screenBuff, true, NO_BG_COLOR);
 }
 
 const uint16_t *AppMenu::getIcon() {

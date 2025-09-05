@@ -11,3 +11,5 @@
 #define BUTTON_HOME     3
 #define BUTTON_KEY1     0
 #define BUTTON_KEY2     8
+
+#define NO_BG_COLOR 0xFFFF
