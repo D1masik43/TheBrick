@@ -118,6 +118,18 @@ void SystemDrivers::Setup() {
         Serial.println("RTC lost power, setting time!");
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     }
+
+    // ==== eMMC SD ====
+    SD_MMC.setPins(39, 38, 40);
+        if(!SD_MMC.begin("/sdcard", true)){
+        Serial.println("SD Card Mount Failed");
+    }
+
+      Serial.println("SD Card initialized.");
+
+
+    uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+      Serial.printf("SD Card Size: %llu MB\n", cardSize);
 }
 
 }

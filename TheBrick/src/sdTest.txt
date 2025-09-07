@@ -1,0 +1,55 @@
+#include "SD_MMC.h"
+
+#define SD_MMC_CLK  39
+#define SD_MMC_CMD  38
+#define SD_MMC_D0   40
+
+void listDir(const char * dirname, uint8_t levels);
+
+void setup() {
+     Serial.begin(115200);
+
+    SD_MMC.setPins(39, 38, 40);
+        if(!SD_MMC.begin("/sdcard", true)){
+        Serial.println("SD Card Mount Failed");
+    }
+
+      Serial.println("SD Card initialized.");
+
+
+    uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+      Serial.printf("SD Card Size: %llu MB\n", cardSize);
+
+    Serial.println("Listing files:");
+    listDir("/", 0);
+}
+
+void loop() {
+    // Nothing here, but must exist
+}
+
+void listDir(const char * dirname, uint8_t levels) {
+  File root = SD_MMC.open(dirname);
+  if(!root) {
+    Serial.println("Failed to open directory");
+    return;
+  }
+  if(!root.isDirectory()) {
+    Serial.println("Not a directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while(file) {
+    for(uint8_t i = 0; i < levels; i++) Serial.print("  ");
+    Serial.print(file.name());
+    if(file.isDirectory()) {
+      Serial.println("/");
+      listDir(file.name(), levels + 1);
+    } else {
+      Serial.print("\t");
+      Serial.println(file.size());
+    }
+    file = root.openNextFile();
+  }
+}

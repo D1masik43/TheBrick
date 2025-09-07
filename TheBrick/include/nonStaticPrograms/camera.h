@@ -1,5 +1,4 @@
 #pragma once
-
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
 #include <esp_camera.h>
@@ -44,5 +43,7 @@ public:
 
 private:
     TFT_eSprite *screenBuff;
+    UIButton takePhotoButton = UIButton(1, 80, 280, 80, 30, "Snap");
+    void TakePicture();
 };
     

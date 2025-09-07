@@ -6,6 +6,8 @@
 #include "System/touchHandler.h"
 #include "System/systemGlobals.h"
 #include <RTClib.h>
+#include "SD_MMC.h"
+#include "FS.h"
 
 class SystemDrivers : public StaticApp
 {
