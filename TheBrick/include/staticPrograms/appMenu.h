@@ -34,14 +34,12 @@ class AppMenu : public StaticApp
 
     TFT_eSprite *screenBuff;
 
-    AppBase *appList[6][3] = {
-      {&CameraAppNonStaticAppWrapper::Get(),&PhoneAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-      {&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get(),&DummyAppNonStaticAppWrapper::Get()},
-    }; 
+    AppBase *appList[3][6] = {
+        {&CameraAppNonStaticAppWrapper::Get(), &FilesAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
+        {&PhoneAppNonStaticAppWrapper::Get(),  &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
+        {&DummyAppNonStaticAppWrapper::Get(),  &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
+    };
+
 
     int startPoint = 36;
     int iconSize = 48;
