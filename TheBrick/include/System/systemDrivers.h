@@ -8,6 +8,9 @@
 #include <RTClib.h>
 #include "SD_MMC.h"
 #include "FS.h"
+#include <TJpg_Decoder.h>
+#include <vector>
+#include <esp_heap_caps.h>
 
 class SystemDrivers : public StaticApp
 {

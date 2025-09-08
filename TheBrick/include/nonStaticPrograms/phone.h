@@ -1,7 +1,6 @@
 #pragma once
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
-#include <vector>
 
 class MainMenu;
 class AppMenu;

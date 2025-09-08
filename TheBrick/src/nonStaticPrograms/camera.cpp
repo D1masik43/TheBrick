@@ -178,3 +178,104 @@ void CameraNonStaticApp::TakePicture() {
     free(jpegBuf);
     Serial.printf("Saved JPEG: %s\n", filename);
 }
+
+/*void CameraNonStaticApp::TakePicture() {
+    // Temporarily switch to JPEG mode
+    sensor_t *s = esp_camera_sensor_get();
+    esp_camera_deinit(); // Stop current capture
+
+    camera_config_t config;
+    config.ledc_channel = LEDC_CHANNEL_0;
+    config.ledc_timer = LEDC_TIMER_0;
+    config.pin_d0 = Y2_GPIO_NUM;
+    config.pin_d1 = Y3_GPIO_NUM;
+    config.pin_d2 = Y4_GPIO_NUM;
+    config.pin_d3 = Y5_GPIO_NUM;
+    config.pin_d4 = Y6_GPIO_NUM;
+    config.pin_d5 = Y7_GPIO_NUM;
+    config.pin_d6 = Y8_GPIO_NUM;
+    config.pin_d7 = Y9_GPIO_NUM;
+    config.pin_xclk = XCLK_GPIO_NUM;
+    config.pin_pclk = PCLK_GPIO_NUM;
+    config.pin_vsync = VSYNC_GPIO_NUM;
+    config.pin_href = HREF_GPIO_NUM;
+    config.pin_sccb_sda = SIOD_GPIO_NUM;
+    config.pin_sccb_scl = SIOC_GPIO_NUM;
+    config.pin_pwdn = PWDN_GPIO_NUM;
+    config.pin_reset = RESET_GPIO_NUM;
+
+    config.xclk_freq_hz = 20000000;
+    config.pixel_format = PIXFORMAT_JPEG; // JPEG for capture
+    config.frame_size = FRAMESIZE_QVGA;
+    config.jpeg_quality = 12;
+    config.fb_count = 1;
+
+    if (psramFound()) config.fb_location = CAMERA_FB_IN_PSRAM;
+    else config.fb_location = CAMERA_FB_IN_DRAM;
+
+    if (esp_camera_init(&config) != ESP_OK) {
+        Serial.println("JPEG camera init failed!");
+        return;
+    }
+
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+        Serial.println("Failed to capture JPEG");
+        return;
+    }
+
+    // Build filename
+    char filename[32];
+    sprintf(filename, "/photo_%lu.jpg", millis());
+    fs::File file = SD_MMC.open(filename, FILE_WRITE);
+    if (!file) {
+        Serial.println("Failed to open file for writing");
+        esp_camera_fb_return(fb);
+        return;
+    }
+
+    file.write(fb->buf, fb->len);
+    file.close();
+    esp_camera_fb_return(fb);
+    Serial.printf("Saved JPEG: %s\n", filename);
+
+    // Reinitialize camera back to RGB565 for display
+    config.pixel_format = PIXFORMAT_RGB565;
+    esp_camera_deinit();
+    esp_camera_init(&config);
+}*/
+
+/*void CameraNonStaticApp::TakePicture() {
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb) {
+        Serial.println("Capture failed");
+        return;
+    }
+
+    // --- convert to JPEG ---
+    uint8_t *jpegBuf = nullptr;
+    size_t jpegLen = 0;
+    bool ok = fmt2jpg((uint8_t*)fb->buf, fb->width*fb->height*2,
+                      fb->width, fb->height,
+                      PIXFORMAT_RGB565, 90, &jpegBuf, &jpegLen);
+    esp_camera_fb_return(fb);
+
+    if(!ok){
+        Serial.println("JPEG encoding failed");
+        return;
+    }
+
+    char filename[32];
+    sprintf(filename, "/photo_%lu.jpg", millis());
+    fs::File file = SD_MMC.open(filename, FILE_WRITE);
+    if(!file){
+        Serial.println("Failed to open file");
+        free(jpegBuf);
+        return;
+    }
+
+    file.write(jpegBuf, jpegLen);
+    file.close();
+    free(jpegBuf);
+    Serial.printf("Saved JPEG: %s\n", filename);
+} */

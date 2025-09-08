@@ -14,10 +14,15 @@ public:
     void UpdateTouch(const TouchPoint* touches, int count) override;
     void Setup() override;
     void Draw() override;
-
     void CloseApp() override;
 
 private:
-    TFT_eSprite *screenBuff;
+    TFT_eSprite* screenBuff;
+    std::vector<String> fileList;
+    int selectedIndex = -1;
+    bool displayingImage = false; 
+
+    void listFiles();
+    void drawFileList();
+    void openImage(const String& filename);
 };
-    
