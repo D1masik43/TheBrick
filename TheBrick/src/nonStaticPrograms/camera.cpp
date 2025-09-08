@@ -177,6 +177,8 @@ void CameraNonStaticApp::TakePicture() {
     file.close();
     free(jpegBuf);
     Serial.printf("Saved JPEG: %s\n", filename);
+    screenBuff->setCursor(20, 250);
+    screenBuff->println(filename);
 }
 
 /*void CameraNonStaticApp::TakePicture() {

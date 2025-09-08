@@ -4,7 +4,7 @@
 
 bool tft_output(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
     auto& spr = SystemDrivers::Get().GetScreenBuff();
-    spr.pushImage(x, y, w, h, bitmap);
+    spr.pushImage(x-60, y, w, h, bitmap);
     return true;
 }
 
@@ -14,15 +14,14 @@ FilesNonStaticApp::FilesNonStaticApp(const std::string& name)
 
 void FilesNonStaticApp::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
-
-    if(!SD_MMC.begin("/sdcard", true)){
+    if (!SD_MMC.begin("/sdcard", true)) {
         Serial.println("SD_MMC mount failed!");
         return;
     }
-
-    Serial.println("SD_MMC mounted successfully");
-
     listFiles();
+
+    maxOffsetY = std::max(0, (int)fileList.size() * itemHeight - screenBuff->height());
+    minOffsetY = 0;
 
     TJpgDec.setJpgScale(1);
     TJpgDec.setCallback(tft_output);
@@ -48,22 +47,37 @@ void FilesNonStaticApp::UpdateButtons(int button) {
 }
 
 void FilesNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
-    if (displayingImage && count > 0 && touches[0].type == TAP) {
-        // Any tap while viewing image closes it
-        displayingImage = false;
-        Draw(); // redraw file list
+    if (displayingImage) {
+        if (count > 0 && touches[0].type == TAP) {
+            displayingImage = false;
+            Draw();
+        }
         return;
     }
 
-    if (count > 0 && touches[0].type == TAP) {
-        int itemHeight = 20;
-        int idx = touches[0].y / itemHeight;
-        if (idx >= 0 && idx < (int)fileList.size()) {
-            selectedIndex = idx;
-            openImage(fileList[idx]);
-            displayingImage = true;
+    if (count > 0) {
+        if (touches[0].type == SLIDE_BEGIN) {
+            lastTouchY = touches[0].y;
+            isSliding = true;
+        } else if (touches[0].type == SLIDE && isSliding) {
+            int delta = touches[0].y - lastTouchY;
+            totalOffsetY += delta;
+            if (totalOffsetY < -maxOffsetY) totalOffsetY = -maxOffsetY;
+            if (totalOffsetY > minOffsetY) totalOffsetY = minOffsetY;
+            lastTouchY = touches[0].y;
+            Draw();
+        } else if (touches[0].type == SLIDE_END) {
+            isSliding = false;
+        } else if (touches[0].type == TAP) {
+            int idx = (touches[0].y - totalOffsetY) / itemHeight;
+            if (idx >= 0 && idx < (int)fileList.size()) {
+                selectedIndex = idx;
+                openImage(fileList[idx]);
+                displayingImage = true;
+            }
         }
     }
+
 }
 
 
@@ -96,15 +110,18 @@ void FilesNonStaticApp::listFiles() {
 }
 
 void FilesNonStaticApp::drawFileList() {
-    int y = 0;
+    screenBuff->fillSprite(TFT_BLACK);
+    int y = totalOffsetY;
     for (size_t i = 0; i < fileList.size(); i++) {
         if ((int)i == selectedIndex)
             screenBuff->setTextColor(TFT_YELLOW, TFT_BLACK);
         else
             screenBuff->setTextColor(TFT_WHITE, TFT_BLACK);
 
-        screenBuff->drawString(fileList[i], 5, y);
-        y += 20;
+        // Only draw visible items
+        if (y + itemHeight >= 0 && y < screenBuff->height())
+            screenBuff->drawString(fileList[i], 5, y);
+        y += itemHeight;
     }
 }
 
