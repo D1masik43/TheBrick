@@ -26,9 +26,9 @@
 class Mainmenu;
 class Appmenu;
 
-class CameraNonStaticApp : public NonStaticApp {
+class PlayerNonStaticApp : public NonStaticApp {
 public:
-    CameraNonStaticApp(const std::string& name);
+    PlayerNonStaticApp(const std::string& name);
 
     void Loop() override;
     void UpdateButtons(int button) override;
@@ -42,8 +42,18 @@ public:
     void CloseApp() override;
 
 private:
-    TFT_eSprite *screenBuff;
-    UIButton takePhotoButton = UIButton(1, 80, 280, 80, 30, "Snap");
-    void TakePicture();
+   TFT_eSprite *screenBuff;
+    
+    // UI Elements
+    UIButton prevBtn = UIButton(1, 10, 260, 60, 40, "<<");
+    UIButton playBtn = UIButton(2, 90, 260, 60, 40, "P/P");
+    UIButton nextBtn = UIButton(3, 170, 260, 60, 40, ">>");
+
+    // File Management
+    std::vector<std::string> playlist;
+    int currentTrackIndex = 0;
+    void ScanSD();
+    void PlayTrack();
+    void TogglePause();
 };
     

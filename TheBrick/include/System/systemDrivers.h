@@ -6,6 +6,12 @@
 #include "System/touchHandler.h"
 #include "System/systemGlobals.h"
 #include <RTClib.h>
+#include "SD_MMC.h"
+#include "FS.h"
+#include <TJpg_Decoder.h>
+#include <vector>
+#include <esp_heap_caps.h>
+#include "Audio.h"
 
 class SystemDrivers : public StaticApp
 {
@@ -29,7 +35,7 @@ class SystemDrivers : public StaticApp
     static TFT_eSprite &GetScreenBuff();
     static HardwareSerial &GetSim800();
     static RTC_DS3231 &GetRTC();
-
+    static Audio &GetAudio();
 
   private:
     SystemDrivers(std::string name);

@@ -4,4 +4,6 @@
 #include "staticPrograms/dummy_wrapper.h"
 #include "staticPrograms/camera_wrapper.h"
 #include "staticPrograms/phone_wrapper.h"
+#include "staticPrograms/files_wrapper.h"
+#include "staticPrograms/player_wrapper.h"
 #include "System/SystemUI/StatusBar.h"
