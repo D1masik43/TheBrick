@@ -35,6 +35,11 @@ RTC_DS3231 &SystemDrivers::GetRTC() {
     return rtc;
 }
 
+Audio &SystemDrivers::GetAudio() {
+    static Audio audio;
+    return audio;
+}
+
 SystemDrivers::SystemDrivers(std::string name) : StaticApp(name) {
 
 }
@@ -125,11 +130,39 @@ void SystemDrivers::Setup() {
         Serial.println("SD Card Mount Failed");
     }
 
-      Serial.println("SD Card initialized.");
+    Serial.println("SD Card initialized.");
 
 
     uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-      Serial.printf("SD Card Size: %llu MB\n", cardSize);
+    Serial.printf("SD Card Size: %llu MB\n", cardSize);
+
+
+    //LRCK 41, BCLK 42, DIN 2
+    // ==== MAX98357 Audio I2S ====
+    Audio &audio = GetAudio();
+    
+    // LRCK 41, BCLK 42, DIN 2
+    // On the S3, we assign: BCLK, LRCK, DIN
+    audio.setPinout(42, 41, 2); 
+    
+    // Optional: Set default volume (0-21)
+    audio.setVolume(12); 
+    
+    Serial.println("I2S Audio Initialized on Pins 41, 42, 2");
+    xTaskCreatePinnedToCore(
+    [](void *pvParameters) {
+        while (1) {
+            SystemDrivers::Get().GetAudio().loop();
+            vTaskDelay(1); // Give the OS a tiny breath
+        }
+    },
+    "AudioTask",
+    4096,
+    NULL,
+    2, // Higher priority than the UI
+    NULL,
+    0 // Run on Core 0
+    );
 }
 
 }
