@@ -8,9 +8,9 @@ void PlayerNonStaticApp::Setup() {
     screenBuff->fillScreen(TFT_BLACK);
     
     ScanSD();
-    if(!playlist.empty()) {
+    /*if(!playlist.empty()) {
         PlayTrack();
-    }
+    }*/
 }
 
 void PlayerNonStaticApp::ScanSD() {
@@ -41,23 +41,34 @@ void PlayerNonStaticApp::Loop() {
     Draw();
 }
 
+void PlayerNonStaticApp::VolumeAdj(int delta) {
+    int newVolume = volume + delta;
+
+    if (newVolume >= 0 && newVolume <= 21) {
+        volume = newVolume;
+        SystemDrivers::Get().GetAudio().setVolume(volume);
+    }
+}
+
 void PlayerNonStaticApp::UpdateButtons(int button) {
     if(button == BUTTON_BACK) SystemCommon::Get().SetNextApp(&MainMenu::Get());
     if(button == BUTTON_LEFT) { currentTrackIndex = (currentTrackIndex - 1 + playlist.size()) % playlist.size(); PlayTrack(); }
     if(button == BUTTON_RIGHT) { currentTrackIndex = (currentTrackIndex + 1) % playlist.size(); PlayTrack(); }
     if(button == BUTTON_IN) TogglePause();
+    if(button == BUTTON_UP) VolumeAdj(1);
+    if(button == BUTTON_DOWN) VolumeAdj(-1);
 }
 
 void PlayerNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
     for (int i = 0; i < count; i++) {
         if (prevBtn.IsPressed(touches[i])) { 
             currentTrackIndex = (currentTrackIndex - 1 + playlist.size()) % playlist.size(); 
-            PlayTrack(); 
+            //PlayTrack(); 
         }
         if (playBtn.IsPressed(touches[i])) { TogglePause(); }
         if (nextBtn.IsPressed(touches[i])) { 
             currentTrackIndex = (currentTrackIndex + 1) % playlist.size(); 
-            PlayTrack(); 
+            //PlayTrack(); 
         }
     }
 }
@@ -69,7 +80,9 @@ void PlayerNonStaticApp::Draw() {
     
     // Status Text
     screenBuff->drawString("Music Player", 60, 20);
-    
+    std::string volStr = "Vol: " + std::to_string(volume);
+    screenBuff->drawString(volStr.c_str(), 60, 60);
+
     if(!playlist.empty()) {
         screenBuff->setTextSize(1);
         screenBuff->drawString("Now Playing:", 10, 80);
