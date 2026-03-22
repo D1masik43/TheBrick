@@ -2,6 +2,9 @@
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
 #include <esp_camera.h>
+#include <RTClib.h>
+#include "System/systemDrivers.h"
+#include <Arduino.h>
 
 // === Camera Pin Mapping ===
 #define PWDN_GPIO_NUM  -1
@@ -45,5 +48,6 @@ private:
     TFT_eSprite *screenBuff;
     UIButton takePhotoButton = UIButton(1, 80, 280, 80, 30, "Snap");
     void TakePicture();
+    RTC_DS3231* rtc = nullptr;
 };
     

@@ -151,7 +151,6 @@ void CameraNonStaticApp::TakePicture() {
         return;
     }
 
-    // --- convert to JPEG ---
     uint8_t *jpegBuf = nullptr;
     size_t jpegLen = 0;
     bool ok = fmt2jpg((uint8_t*)fb->buf, fb->width*fb->height*2,
@@ -159,23 +158,113 @@ void CameraNonStaticApp::TakePicture() {
                       PIXFORMAT_RGB565, 90, &jpegBuf, &jpegLen);
     esp_camera_fb_return(fb);
 
-    if(!ok){
+    if (!ok) {
         Serial.println("JPEG encoding failed");
         return;
     }
 
-    char filename[32];
-    sprintf(filename, "/photo_%lu.jpg", millis());
-    fs::File file = SD_MMC.open(filename, FILE_WRITE);
-    if(!file){
-        Serial.println("Failed to open file");
+    // --- Get time from RTC ---
+    rtc =  &SystemDrivers::Get().GetRTC();
+    DateTime now = rtc->now();
+
+    // --- Build minimal EXIF block with DateTime ---
+    // EXIF datetime format: "YYYY:MM:DD HH:MM:SS"
+    char dateTimeStr[20];
+    snprintf(dateTimeStr, sizeof(dateTimeStr), "%04d:%02d:%02d %02d:%02d:%02d",
+             now.year(), now.month(), now.day(),
+             now.hour(), now.minute(), now.second());
+
+    // Minimal EXIF APP1 segment
+    // Structure: APP1 marker (FF E1) + length + "Exif\0\0" + TIFF header + IFD
+    uint8_t exif[128] = {};
+    int pos = 0;
+
+    // APP1 marker
+    exif[pos++] = 0xFF;
+    exif[pos++] = 0xE1;
+
+    // Placeholder for APP1 length (big-endian, filled in later)
+    int lenOffset = pos;
+    exif[pos++] = 0x00;
+    exif[pos++] = 0x00;
+
+    // "Exif\0\0" identifier
+    memcpy(exif + pos, "Exif\0\0", 6); pos += 6;
+
+    // TIFF header (little-endian byte order)
+    int tiffStart = pos;
+    exif[pos++] = 0x49; exif[pos++] = 0x49; // "II" = little-endian
+    exif[pos++] = 0x2A; exif[pos++] = 0x00; // TIFF magic
+    exif[pos++] = 0x08; exif[pos++] = 0x00; // Offset to IFD0 = 8
+    exif[pos++] = 0x00; exif[pos++] = 0x00;
+
+    // IFD0: 1 entry (DateTime tag 0x0132)
+    exif[pos++] = 0x01; exif[pos++] = 0x00; // num entries = 1
+
+    // DateTime tag: 0x0132, type ASCII (2), count 20, value offset
+    int ifdEntryStart = pos;
+    exif[pos++] = 0x32; exif[pos++] = 0x01; // tag 0x0132
+    exif[pos++] = 0x02; exif[pos++] = 0x00; // type: ASCII
+    exif[pos++] = 0x14; exif[pos++] = 0x00; exif[pos++] = 0x00; exif[pos++] = 0x00; // count: 20
+    // Value offset: relative to TIFF header start
+    // IFD entry is at tiffStart+8 (IFD num) + 2 + 12 (one entry) + 4 (next IFD) = tiffStart + 26
+    int strOffset = (pos - tiffStart) + 4 + 4; // after next IFD offset + padding
+    exif[pos++] = (strOffset)      & 0xFF;
+    exif[pos++] = (strOffset >> 8) & 0xFF;
+    exif[pos++] = 0x00; exif[pos++] = 0x00;
+
+    // Next IFD offset = 0 (no more IFDs)
+    exif[pos++] = 0x00; exif[pos++] = 0x00;
+    exif[pos++] = 0x00; exif[pos++] = 0x00;
+
+    // DateTime string value (20 bytes including null terminator)
+    memcpy(exif + pos, dateTimeStr, 20); pos += 20;
+
+    // Fill in APP1 length (excludes the 2-byte marker, includes length field itself)
+    uint16_t app1Len = pos - 2; // subtract FF E1 marker
+    exif[lenOffset]     = (app1Len >> 8) & 0xFF;
+    exif[lenOffset + 1] = app1Len & 0xFF;
+
+    // --- Inject EXIF into JPEG ---
+    // Original JPEG starts with FF D8 (SOI), then typically FF E0 (APP0) or directly APP1.
+    // We insert our APP1 right after the SOI marker (first 2 bytes).
+    size_t newLen = jpegLen + pos;
+    uint8_t *newJpeg = (uint8_t*)malloc(newLen);
+    if (!newJpeg) {
+        Serial.println("Failed to allocate EXIF buffer");
         free(jpegBuf);
         return;
     }
 
-    file.write(jpegBuf, jpegLen);
-    file.close();
+    // Copy SOI (FF D8)
+    newJpeg[0] = jpegBuf[0];
+    newJpeg[1] = jpegBuf[1];
+
+    // Insert EXIF APP1 block
+    memcpy(newJpeg + 2, exif, pos);
+
+    // Copy rest of JPEG (skip SOI)
+    memcpy(newJpeg + 2 + pos, jpegBuf + 2, jpegLen - 2);
+
     free(jpegBuf);
+
+    // --- Save ---
+    char filename[40];
+    snprintf(filename, sizeof(filename), "/photo_%04d%02d%02d_%02d%02d%02d.jpg",
+             now.year(), now.month(), now.day(),
+             now.hour(), now.minute(), now.second());
+
+    fs::File file = SD_MMC.open(filename, FILE_WRITE);
+    if (!file) {
+        Serial.println("Failed to open file");
+        free(newJpeg);
+        return;
+    }
+
+    file.write(newJpeg, newLen);
+    file.close();
+    free(newJpeg);
+
     Serial.printf("Saved JPEG: %s\n", filename);
     screenBuff->setCursor(20, 250);
     screenBuff->println(filename);
