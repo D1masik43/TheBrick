@@ -61,7 +61,18 @@ void setup() {
 }
 
 void loop() {
-
+    if (Serial.available() > 0) {
+    Serial.println("Pong");
+    String input = Serial.readStringUntil('\n');
+    int y, m, d, hh, mm, ss;
+    // eg. "26:03:22:23:01:00" or "2026/03/22 23:01:00"
+    if (sscanf(input.c_str(), "%d %*c %d %*c %d %*c %d %*c %d %*c %d", &y, &m, &d, &hh, &mm, &ss) == 6) {
+      if (y < 100) y += 2000; 
+      
+      SystemDrivers::Get().GetRTC().adjust(DateTime(y, m, d, hh, mm, ss));
+      Serial.println("RTC Updated!");
+    }
+  }
   SystemCommon::Get().GetCurrentApp()->Loop();
   int buttonIndex;
     if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))

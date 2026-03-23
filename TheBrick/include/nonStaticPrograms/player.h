@@ -52,8 +52,10 @@ private:
     // File Management
     std::vector<std::string> playlist;
     int currentTrackIndex = 0;
+    int volume = 12;
     void ScanSD();
     void PlayTrack();
     void TogglePause();
+    void VolumeAdj(int delta);
 };
     

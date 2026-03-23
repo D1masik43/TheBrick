@@ -146,7 +146,7 @@ void SystemDrivers::Setup() {
     audio.setPinout(42, 41, 2); 
     
     // Optional: Set default volume (0-21)
-    audio.setVolume(12); 
+    audio.setVolume(4); 
     
     Serial.println("I2S Audio Initialized on Pins 41, 42, 2");
     xTaskCreatePinnedToCore(
