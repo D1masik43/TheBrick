@@ -8,9 +8,11 @@ void PlayerNonStaticApp::Setup() {
     screenBuff->fillScreen(TFT_BLACK);
     
     ScanSD();
-    /*if(!playlist.empty()) {
+    if(!playlist.empty()) {
         PlayTrack();
-    }*/
+        TogglePause();
+    }
+
 }
 
 void PlayerNonStaticApp::ScanSD() {
@@ -52,25 +54,31 @@ void PlayerNonStaticApp::VolumeAdj(int delta) {
 
 void PlayerNonStaticApp::UpdateButtons(int button) {
     if(button == BUTTON_BACK) SystemCommon::Get().SetNextApp(&MainMenu::Get());
-    if(button == BUTTON_LEFT) { currentTrackIndex = (currentTrackIndex - 1 + playlist.size()) % playlist.size(); PlayTrack(); }
-    if(button == BUTTON_RIGHT) { currentTrackIndex = (currentTrackIndex + 1) % playlist.size(); PlayTrack(); }
+    if(button == BUTTON_LEFT) { currentTrackIndex = (currentTrackIndex - 1 + playlist.size()) % playlist.size(); PlayTrack();TogglePause(); }
+    if(button == BUTTON_RIGHT) { currentTrackIndex = (currentTrackIndex + 1) % playlist.size(); PlayTrack();TogglePause(); }
     if(button == BUTTON_IN) TogglePause();
     if(button == BUTTON_UP) VolumeAdj(1);
     if(button == BUTTON_DOWN) VolumeAdj(-1);
 }
 
 void PlayerNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
-    for (int i = 0; i < count; i++) {
-        if (prevBtn.IsPressed(touches[i])) { 
+    if (count <= 0) return;
+    const TouchPoint& tp = touches[0];
+
+    if (tp.type == TAP) {
+        if (prevBtn.IsPressed(tp) != -1) { 
             currentTrackIndex = (currentTrackIndex - 1 + playlist.size()) % playlist.size(); 
-            //PlayTrack(); 
+            PlayTrack();
+            TogglePause();
         }
-        if (playBtn.IsPressed(touches[i])) { TogglePause(); }
-        if (nextBtn.IsPressed(touches[i])) { 
+        if (playBtn.IsPressed(tp) != -1) { TogglePause(); }
+        if (nextBtn.IsPressed(tp) != -1) { 
             currentTrackIndex = (currentTrackIndex + 1) % playlist.size(); 
-            //PlayTrack(); 
+            PlayTrack();
+            TogglePause();
         }
     }
+
 }
 
 void PlayerNonStaticApp::Draw() {

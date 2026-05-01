@@ -112,7 +112,8 @@ void SystemDrivers::Setup() {
     sim800.begin(9600, SERIAL_8N1, 0, 1); 
     Serial.println("SIM800 UART started");
     sim800.println("AT+CPIN=\"9205\"");
-
+    sim800.println("AT+CLVL=100");
+    
     // ==== DS3231 ====
     RTC_DS3231 &rtc = GetRTC();
     if (!rtc.begin()) {
