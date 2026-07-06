@@ -164,8 +164,12 @@ void CameraNonStaticApp::TakePicture() {
     }
 
     // --- Get time from RTC ---
-    rtc =  &SystemDrivers::Get().GetRTC();
-    DateTime now = rtc->now();
+    rtc = &SystemDrivers::Get().GetRTC();
+    DateTime now;
+    if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        now = rtc->now();
+        xSemaphoreGive(i2cMutex);
+    }
 
     // --- Build minimal EXIF block with DateTime ---
     // EXIF datetime format: "YYYY:MM:DD HH:MM:SS"

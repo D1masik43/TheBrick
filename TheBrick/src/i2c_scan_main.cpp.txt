@@ -1,0 +1,51 @@
+#include <Arduino.h>
+#include <Wire.h>
+
+void setup() {
+    Serial.begin(115200);
+    delay(2000);
+
+    Wire.begin(45, 48);
+    Wire.setClock(100000); // 100kHz to be gentle
+
+    Serial.println("\n=== I2C Scanner ===");
+    Serial.println("Scanning...\n");
+
+    int found = 0;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        uint8_t err = Wire.endTransmission();
+
+        if (err == 0) {
+            Serial.printf("  0x%02X - OK\n", addr);
+            found++;
+        } else if (err == 2) {
+            // NACK on address - device not present, normal
+        } else {
+            Serial.printf("  0x%02X - error %d\n", addr, err);
+        }
+    }
+
+    Serial.printf("\nFound %d device(s)\n", found);
+    Serial.println("Expected: 0x20 (MCP23017), 0x38 (FT6336), 0x68 (DS3231)");
+    Serial.println("\n=== Scan complete ===");
+}
+
+void loop() {
+    delay(5000);
+
+    Serial.println("\n--- Re-scan ---");
+    int found = 0;
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        uint8_t err = Wire.endTransmission();
+
+        if (err == 0) {
+            Serial.printf("  0x%02X - OK\n", addr);
+            found++;
+        } else if (err != 2) {
+            Serial.printf("  0x%02X - error %d\n", addr, err);
+        }
+    }
+    Serial.printf("Found %d device(s)\n", found);
+}

@@ -1,6 +1,5 @@
 #include "System/SystemUI/StatusBar.h"
 #include "System/systemDrivers.h"
-#include <Arduino.h>
 
 StatusBar& StatusBar::Get() {
     static StatusBar instance;
@@ -28,10 +27,13 @@ void StatusBar::statusTask(void* param) {
 
     for(;;) {
         // ---- Time ----
-        DateTime now = self->rtc->now();
-        char buffer[6];
-        snprintf(buffer, sizeof(buffer), "%02d:%02d", now.hour(), now.minute());
-        self->cachedTime = String(buffer);
+        if (rtcAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            DateTime now = self->rtc->now();
+            xSemaphoreGive(i2cMutex);
+            char buffer[6];
+            snprintf(buffer, sizeof(buffer), "%02d:%02d", now.hour(), now.minute());
+            self->cachedTime = String(buffer);
+        }
 
         // ---- Battery ----
         self->cachedBattery = 75; // replace with actual read

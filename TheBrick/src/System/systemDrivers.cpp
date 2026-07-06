@@ -1,5 +1,9 @@
 #include "System/systemDrivers.h"
 
+SemaphoreHandle_t i2cMutex = nullptr;
+bool mcpAvailable = false;
+bool rtcAvailable = false;
+
 SystemDrivers &SystemDrivers::Get(std::string name) {
     static SystemDrivers instance(name);
     return instance;
@@ -60,10 +64,23 @@ void SystemDrivers::Setup() {
 
     //  ====    Serial  ====
     Serial.begin(115200);
+    while (!Serial && millis() < 2000) { delay(10); }
 
     //  ====    I2C  ====
-    Wire.begin(45, 48);  // SDA = 45, SCL = 48
+    i2cMutex = xSemaphoreCreateMutex();
+    Wire.begin(45, 48);
     Wire.setClock(400000);
+
+    Wire.setTimeOut(10);
+    Serial.println("I2C scan:");
+    for (uint8_t addr = 1; addr < 127; addr++) {
+        Wire.beginTransmission(addr);
+        if (Wire.endTransmission() == 0) {
+            Serial.printf("  0x%02X found\n", addr);
+        }
+    }
+    Serial.println("I2C scan done");
+    Wire.setTimeOut(50);
 
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();
@@ -79,18 +96,24 @@ void SystemDrivers::Setup() {
 
     //  ====    MCP  ====
     Adafruit_MCP23X17 &mcp = GetMCP();
-    if(mcp.begin_I2C(0x20, &Wire)) 
+    if(mcp.begin_I2C(0x20, &Wire))
     {
         Serial.println("MCP good");
+        mcpAvailable = true;
     }
     else
     {
         Serial.println("MCP NOT good");
+        mcpAvailable = false;
     }
 
     //  ====    ButtonHandler  ====
     buttonEventQueue = xQueueCreate(10, sizeof(int));
-    xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
+    if (mcpAvailable) {
+        xTaskCreatePinnedToCore(buttonTask, "ButtonTask", 4096, NULL, 1, NULL, 0);
+    } else {
+        Serial.println("ButtonTask skipped - MCP not available");
+    }
 
      //  ====    FT6336  ====
 
@@ -118,8 +141,10 @@ void SystemDrivers::Setup() {
     RTC_DS3231 &rtc = GetRTC();
     if (!rtc.begin()) {
         Serial.println("RTC NOT found");
+        rtcAvailable = false;
     } else {
     Serial.println("RTC found");
+    rtcAvailable = true;
     if (rtc.lostPower()) {
         Serial.println("RTC lost power, setting time!");
         rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));

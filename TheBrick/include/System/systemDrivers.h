@@ -13,6 +13,10 @@
 #include <esp_heap_caps.h>
 #include "Audio.h"
 
+extern SemaphoreHandle_t i2cMutex;
+extern bool mcpAvailable;
+extern bool rtcAvailable;
+
 class SystemDrivers : public StaticApp
 {
   public:

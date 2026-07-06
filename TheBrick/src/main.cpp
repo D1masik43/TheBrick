@@ -69,7 +69,10 @@ void loop() {
     if (sscanf(input.c_str(), "%d %*c %d %*c %d %*c %d %*c %d %*c %d", &y, &m, &d, &hh, &mm, &ss) == 6) {
       if (y < 100) y += 2000; 
       
-      SystemDrivers::Get().GetRTC().adjust(DateTime(y, m, d, hh, mm, ss));
+      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+          SystemDrivers::Get().GetRTC().adjust(DateTime(y, m, d, hh, mm, ss));
+          xSemaphoreGive(i2cMutex);
+      }
       Serial.println("RTC Updated!");
     }
   }

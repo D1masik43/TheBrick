@@ -1,4 +1,5 @@
 #include "System/touchHandler.h"
+#include "System/systemDrivers.h"
 
 TouchPoint lastPoints[2];
 bool lastTouchValid[2] = { false, false };
@@ -12,7 +13,12 @@ bool movedEnough(int x1, int y1, int x2, int y2, int threshold = 0) {
 void handleTouch() {
     arduino::ft6336<SCREEN_WIDTH, SCREEN_HEIGHT>& touch = SystemDrivers::Get().GetTouch();
 
-    if (!touch.update()) return;
+    bool updated = false;
+    if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        updated = touch.update();
+        xSemaphoreGive(i2cMutex);
+    }
+    if (!updated) return;
 
     TouchPoint points[2] = {};
     bool currentTouchValid[2] = { false, false };
