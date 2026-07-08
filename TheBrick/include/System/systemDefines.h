@@ -13,7 +13,7 @@
 #define BUTTON_KEY2     8//8
 */
 
-#define BUTTON_UP       -1  // not working - broken trace?
+#define BUTTON_UP       -1
 #define BUTTON_DOWN     11
 #define BUTTON_LEFT     9
 #define BUTTON_RIGHT    10

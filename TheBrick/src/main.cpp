@@ -1,44 +1,101 @@
-#include <Arduino.h>
-#include <Wire.h>
-#include <Adafruit_MCP23X17.h>
+#include "System/systemDrivers.h"
+#include "System/buttonHandler.h"
+#include "staticPrograms/mainMenu.h"
+#include "appTemplates/staticApp.h"
+#include "System/systemCommon.h"
 
-Adafruit_MCP23X17 mcp;
+TFT_eSprite *screenBuff;
+
+void MakeBlurredWalpaper(int x0, int y0, int w, int h, int blurIntensity) {
+    for (int y = y0; y < y0 + h; y++) {
+        for (int x = x0; x < x0 + w; x++) {
+            int r = 0, g = 0, b = 0, count = 0;
+            for (int dy = -blurIntensity; dy <= blurIntensity; dy++) {
+                for (int dx = -blurIntensity; dx <= blurIntensity; dx++) {
+                    int px = x + dx;
+                    int py = y + dy;
+                    if (px >= 0 && px < SCREEN_WIDTH && py >= 0 && py < SCREEN_HEIGHT) {
+                        uint16_t p = wallpaper[py][px];
+                        p = (p >> 8) | (p << 8);
+                        r += (p >> 11) & 0x1F;
+                        g += (p >> 5) & 0x3F;
+                        b += p & 0x1F;
+                        count++;
+                    }
+                }
+            }
+            r /= count;
+            g /= count;
+            b /= count;
+            uint16_t blurred = (r << 11) | (g << 5) | b;
+            blurred = (blurred >> 8) | (blurred << 8);
+            wallpaperBlurred[y][x] = blurred;
+        }
+    }
+}
+
 
 void setup() {
-    Serial.begin(115200);
-    delay(3000);
+  screenBuff = &SystemDrivers::Get().GetScreenBuff();
 
-    Wire.begin(45, 48);
-    Wire.setClock(400000);
+  SystemDrivers::Get().Setup();
+  SystemCommon::Get().GetCurrentApp()->Setup();
+  AppMenu::Get().Setup();
 
-    if (!mcp.begin_I2C(0x20, &Wire)) {
-        Serial.println("MCP23017 not found!");
-        while (1) delay(1000);
+    wallpaper = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    if (!wallpaper) {
+        Serial.println("Failed to allocate wallpaper in PSRAM");
+        return;
     }
-    Serial.println("MCP23017 OK");
+    // Copy from flash (initialized wallpaper) to PSRAM buffer
+    memcpy(wallpaper, defaultWallpaper, 320 * 240 * sizeof(uint16_t));
 
-    for (int i = 0; i < 16; i++) {
-        mcp.pinMode(i, INPUT_PULLUP);
+    wallpaperBlurred = (uint16_t (*)[240]) heap_caps_malloc(320 * 240 * sizeof(uint16_t), MALLOC_CAP_SPIRAM);
+    if (!wallpaperBlurred) {
+        Serial.println("Failed to allocate wallpaper in PSRAM");
+        return;
     }
+    MakeBlurredWalpaper(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, 6);
 
-    Serial.println("All 16 pins set to INPUT_PULLUP");
-    Serial.println("Press buttons to see which pin goes LOW\n");
+    StatusBar::Get().Setup();
 }
 
 void loop() {
-    uint16_t state = mcp.readGPIOAB();
-
-    for (int i = 0; i < 16; i++) {
-        if (bitRead(state, i) == 0) {
-            Serial.printf("Pin %d pressed\n", i);
-        }
+    if (Serial.available() > 0) {
+    Serial.println("Pong");
+    String input = Serial.readStringUntil('\n');
+    int y, m, d, hh, mm, ss;
+    // eg. "26:03:22:23:01:00" or "2026/03/22 23:01:00"
+    if (sscanf(input.c_str(), "%d %*c %d %*c %d %*c %d %*c %d %*c %d", &y, &m, &d, &hh, &mm, &ss) == 6) {
+      if (y < 100) y += 2000; 
+      
+      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+          SystemDrivers::Get().GetRTC().adjust(DateTime(y, m, d, hh, mm, ss));
+          xSemaphoreGive(i2cMutex);
+      }
+      Serial.println("RTC Updated!");
+    }
+  }
+  SystemCommon::Get().GetCurrentApp()->Loop();
+  int buttonIndex;
+    if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))
+    {
+      Serial.println(buttonIndex);
+      SystemCommon::Get().GetCurrentApp()->UpdateButtons(buttonIndex);
     }
 
-    static uint32_t lastFull = 0;
-    if (millis() - lastFull > 2000) {
-        Serial.printf("Raw: 0x%04X\n", state);
-        lastFull = millis();
-    }
+ TouchPoint receivedPoints[2];
 
-    delay(100);
+  if (xQueueReceive(touchEventQueue, &receivedPoints, 0)) {
+      int count = 0;
+      if (receivedPoints[0].type != NONE) count++;
+      if (receivedPoints[1].type != NONE) count++;
+
+      SystemCommon::Get().GetCurrentApp()->UpdateTouch(receivedPoints, count);
+  }
+
+
+  screenBuff->pushSprite(0, 0);
+
+  SystemCommon::Get().ProcessAppSwitch();
 }
