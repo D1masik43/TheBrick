@@ -2,6 +2,17 @@
 
 QueueHandle_t buttonEventQueue;
 
+static const int buttonPins[] = {
+    BUTTON_BACK,    // 0
+    BUTTON_HOME,    // 1
+    BUTTON_IN,      // 2
+    BUTTON_KEY1,    // 3
+    BUTTON_LEFT,    // 9
+    BUTTON_RIGHT,   // 10
+    BUTTON_DOWN,    // 11
+};
+static const int numButtons = sizeof(buttonPins) / sizeof(buttonPins[0]);
+
 void handleButtons()
 {
     if (!mcpAvailable) return;
@@ -18,8 +29,9 @@ void handleButtons()
         return;
     }
 
-    for (int i = 0; i < 10; i++)
+    for (int b = 0; b < numButtons; b++)
     {
+        int i = buttonPins[b];
         bool lastState = bitRead(lastMcpState, i);
         bool currentState = bitRead(currentMcpState, i);
 
@@ -36,7 +48,8 @@ void handleButtons()
             {
                 xQueueSend(buttonEventQueue, &i, 0);
                 bool held = true;
-                while (held) {
+                int timeout = 200;
+                while (held && timeout-- > 0) {
                     vTaskDelay(pdMS_TO_TICKS(10));
                     if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                         held = (bitRead(mcp.readGPIOAB(), i) == 0);
@@ -54,7 +67,7 @@ void buttonTask(void *pvParameters)
 {
     auto &mcp = SystemDrivers::Get().GetMCP();
     if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 16; i++) {
             mcp.pinMode(i, INPUT_PULLUP);
         }
         xSemaphoreGive(i2cMutex);

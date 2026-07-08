@@ -64,7 +64,6 @@ void SystemDrivers::Setup() {
 
     //  ====    Serial  ====
     Serial.begin(115200);
-    while (!Serial && millis() < 2000) { delay(10); }
 
     //  ====    I2C  ====
     i2cMutex = xSemaphoreCreateMutex();
@@ -163,12 +162,9 @@ void SystemDrivers::Setup() {
     Serial.printf("SD Card Size: %llu MB\n", cardSize);
 
 
-    //LRCK 41, BCLK 42, DIN 2
     // ==== MAX98357 Audio I2S ====
     Audio &audio = GetAudio();
     
-    // LRCK 41, BCLK 42, DIN 2
-    // On the S3, we assign: BCLK, LRCK, DIN
     audio.setPinout(42, 41, 2); 
     
     // Optional: Set default volume (0-21)
