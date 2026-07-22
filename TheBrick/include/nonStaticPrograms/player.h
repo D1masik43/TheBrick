@@ -48,11 +48,14 @@ private:
     UIButton prevBtn = UIButton(1, 10, 260, 60, 40, "<<");
     UIButton playBtn = UIButton(2, 90, 260, 60, 40, "P/P");
     UIButton nextBtn = UIButton(3, 170, 260, 60, 40, ">>");
+    UIButton volUpBtn = UIButton(4, 10, 200, 60, 40, "+");
+    UIButton volDownBtn = UIButton(5, 90, 200, 60, 40, "-");
 
     // File Management
     std::vector<std::string> playlist;
     int currentTrackIndex = 0;
     int volume = 12;
+    TaskHandle_t audioTaskHandle = nullptr;
     void ScanSD();
     void PlayTrack();
     void TogglePause();

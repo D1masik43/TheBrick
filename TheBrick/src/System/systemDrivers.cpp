@@ -44,6 +44,11 @@ Audio &SystemDrivers::GetAudio() {
     return audio;
 }
 
+Adafruit_INA219 &SystemDrivers::GetINA219() {
+    static Adafruit_INA219 ina219;
+    return ina219;
+}
+
 SystemDrivers::SystemDrivers(std::string name) : StaticApp(name) {
 
 }
@@ -80,6 +85,14 @@ void SystemDrivers::Setup() {
     }
     Serial.println("I2C scan done");
     Wire.setTimeOut(50);
+
+    //  ====    INA219  ====
+    Adafruit_INA219 &ina219 = GetINA219();
+    if (ina219.begin(&Wire)) {
+        Serial.println("INA219 good");
+    } else {
+        Serial.println("INA219 NOT good");
+    }
 
     //  ====    TFT  ====
     TFT_eSPI *tft = &GetTFT();
@@ -162,29 +175,8 @@ void SystemDrivers::Setup() {
     Serial.printf("SD Card Size: %llu MB\n", cardSize);
 
 
-    // ==== MAX98357 Audio I2S ====
-    Audio &audio = GetAudio();
     
-    audio.setPinout(42, 41, 2); 
-    
-    // Optional: Set default volume (0-21)
-    audio.setVolume(4); 
-    
-    Serial.println("I2S Audio Initialized on Pins 41, 42, 2");
-    xTaskCreatePinnedToCore(
-    [](void *pvParameters) {
-        while (1) {
-            SystemDrivers::Get().GetAudio().loop();
-            vTaskDelay(1); // Give the OS a tiny breath
-        }
-    },
-    "AudioTask",
-    4096,
-    NULL,
-    2, // Higher priority than the UI
-    NULL,
-    0 // Run on Core 0
-    );
+
 }
 
 }

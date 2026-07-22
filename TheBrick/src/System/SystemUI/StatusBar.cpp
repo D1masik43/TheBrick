@@ -36,7 +36,12 @@ void StatusBar::statusTask(void* param) {
         }
 
         // ---- Battery ----
-        self->cachedBattery = 75; // replace with actual read
+        if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            float v = SystemDrivers::Get().GetINA219().getBusVoltage_V();
+            xSemaphoreGive(i2cMutex);
+            int pct = (int)(v / 4.2 * 100);
+            self->cachedBattery = pct;
+        }
 
         // ---- SIM800 ----
         sim800.println("AT+CSQ");

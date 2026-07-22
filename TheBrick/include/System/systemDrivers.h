@@ -12,6 +12,7 @@
 #include <vector>
 #include <esp_heap_caps.h>
 #include "Audio.h"
+#include <Adafruit_INA219.h>
 
 extern SemaphoreHandle_t i2cMutex;
 extern bool mcpAvailable;
@@ -40,6 +41,7 @@ class SystemDrivers : public StaticApp
     static HardwareSerial &GetSim800();
     static RTC_DS3231 &GetRTC();
     static Audio &GetAudio();
+    static Adafruit_INA219 &GetINA219();
 
   private:
     SystemDrivers(std::string name);

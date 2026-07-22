@@ -6,13 +6,26 @@ PlayerNonStaticApp::PlayerNonStaticApp(const std::string& name) : NonStaticApp(n
 void PlayerNonStaticApp::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
     screenBuff->fillScreen(TFT_BLACK);
-    
+
+    Audio &audio = SystemDrivers::Get().GetAudio();
+    audio.setPinout(42, 41, 2);
+    audio.setVolume(volume);
+
+    xTaskCreatePinnedToCore(
+        [](void *pvParameters) {
+            while (1) {
+                SystemDrivers::Get().GetAudio().loop();
+                vTaskDelay(1);
+            }
+        },
+        "AudioTask", 4096, NULL, 2, &audioTaskHandle, 0
+    );
+
     ScanSD();
     if(!playlist.empty()) {
         PlayTrack();
         TogglePause();
     }
-
 }
 
 void PlayerNonStaticApp::ScanSD() {
@@ -77,6 +90,8 @@ void PlayerNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
             PlayTrack();
             TogglePause();
         }
+        if (volUpBtn.IsPressed(tp) != -1) { VolumeAdj(1); }
+        if (volDownBtn.IsPressed(tp) != -1) { VolumeAdj(-1); }
     }
 
 }
@@ -103,6 +118,8 @@ void PlayerNonStaticApp::Draw() {
     prevBtn.Draw(*screenBuff);
     playBtn.Draw(*screenBuff);
     nextBtn.Draw(*screenBuff);
+    volUpBtn.Draw(*screenBuff);
+    volDownBtn.Draw(*screenBuff);
     
     // Push to display (assuming SystemDrivers handles the push or you do it here)
     SystemDrivers::Get().GetTFT().pushImage(0, 0, 240, 320, (uint16_t*)screenBuff->getPointer());
@@ -110,6 +127,10 @@ void PlayerNonStaticApp::Draw() {
 
 void PlayerNonStaticApp::CloseApp() {
     SystemDrivers::Get().GetAudio().stopSong();
+    if (audioTaskHandle) {
+        vTaskDelete(audioTaskHandle);
+        audioTaskHandle = nullptr;
+    }
     playlist.clear();
 }
 
