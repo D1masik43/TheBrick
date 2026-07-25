@@ -18,6 +18,7 @@ private:
     // cached values
     String cachedTime = "--:--";
     int cachedBattery = -1;
+    bool cachedCharging = false;
     int cachedBars = 0;
     bool cachedRegistered = false;
 

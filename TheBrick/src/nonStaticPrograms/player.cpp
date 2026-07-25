@@ -7,6 +7,13 @@ void PlayerNonStaticApp::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
     screenBuff->fillScreen(TFT_BLACK);
 
+    if (mcpAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        auto &mcp = SystemDrivers::Get().GetMCP();
+        mcp.pinMode(15, OUTPUT);
+        mcp.digitalWrite(15, HIGH);
+        xSemaphoreGive(i2cMutex);
+    }
+
     Audio &audio = SystemDrivers::Get().GetAudio();
     audio.setPinout(42, 41, 2);
     audio.setVolume(volume);
@@ -130,6 +137,10 @@ void PlayerNonStaticApp::CloseApp() {
     if (audioTaskHandle) {
         vTaskDelete(audioTaskHandle);
         audioTaskHandle = nullptr;
+    }
+    if (mcpAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
+        SystemDrivers::Get().GetMCP().digitalWrite(15, LOW);
+        xSemaphoreGive(i2cMutex);
     }
     playlist.clear();
 }

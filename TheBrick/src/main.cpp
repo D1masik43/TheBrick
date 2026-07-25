@@ -85,13 +85,25 @@ void loop() {
     }
 
  TouchPoint receivedPoints[2];
+  static int swipeStartX = 0;
 
   if (xQueueReceive(touchEventQueue, &receivedPoints, 0)) {
       int count = 0;
       if (receivedPoints[0].type != NONE) count++;
       if (receivedPoints[1].type != NONE) count++;
 
+      if (receivedPoints[0].type == SLIDE_BEGIN) {
+          swipeStartX = receivedPoints[0].x;
+      } else if (receivedPoints[0].type == SLIDE_END) {
+          int deltaX = receivedPoints[0].x - swipeStartX;
+          if (swipeStartX < 40 && deltaX > 60) {
+              SystemCommon::Get().GetCurrentApp()->UpdateButtons(BUTTON_BACK);
+              goto skipTouch;
+          }
+      }
+
       SystemCommon::Get().GetCurrentApp()->UpdateTouch(receivedPoints, count);
+      skipTouch:;
   }
 
 

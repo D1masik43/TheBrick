@@ -21,9 +21,26 @@ void StatusBar::Setup() {
     );
 }
 
+static String sim800Command(HardwareSerial& sim800, const char* cmd, int waitMs = 200) {
+    while (sim800.available()) sim800.read();
+    sim800.println(cmd);
+    delay(waitMs);
+    String response = "";
+    while (sim800.available()) response += (char)sim800.read();
+    return response;
+}
+
 void StatusBar::statusTask(void* param) {
     StatusBar* self = (StatusBar*)param;
     HardwareSerial& sim800 = SystemDrivers::Get().GetSim800();
+
+    // Kick SIM800 awake
+    sim800Command(sim800, "AT", 100);
+    sim800Command(sim800, "AT", 100);
+    sim800Command(sim800, "ATE0", 100);
+    sim800Command(sim800, "AT+CFUN=1", 300);
+
+    int pollDelay = 200;
 
     for(;;) {
         // ---- Time ----
@@ -37,23 +54,22 @@ void StatusBar::statusTask(void* param) {
 
         // ---- Battery ----
         if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            float v = SystemDrivers::Get().GetINA219().getBusVoltage_V();
+            auto &ina = SystemDrivers::Get().GetINA219();
+            float v = ina.getBusVoltage_V();
+            float mA = ina.getCurrent_mA();
             xSemaphoreGive(i2cMutex);
             int pct = (int)(v / 4.2 * 100);
             self->cachedBattery = pct;
+            self->cachedCharging = (mA > 0);
         }
 
         // ---- SIM800 ----
-        sim800.println("AT+CSQ");
-        delay(100);
-        String response = "";
-        while (sim800.available()) response += (char)sim800.read();
+        String response = sim800Command(sim800, "AT+CSQ");
         int rssi = -1;
         if (response.indexOf("+CSQ:") != -1) {
             int start = response.indexOf(":") + 2;
             int end = response.indexOf(",", start);
-            String rssiStr = response.substring(start, end);
-            rssi = rssiStr.toInt();
+            rssi = response.substring(start, end).toInt();
         }
         if (rssi < 0 || rssi == 99) self->cachedBars = 0;
         else if (rssi < 10) self->cachedBars = 1;
@@ -61,13 +77,12 @@ void StatusBar::statusTask(void* param) {
         else if (rssi < 20) self->cachedBars = 3;
         else self->cachedBars = 4;
 
-        sim800.println("AT+CREG?");
-        delay(100);
-        response = "";
-        while (sim800.available()) response += (char)sim800.read();
+        response = sim800Command(sim800, "AT+CREG?");
         self->cachedRegistered = (response.indexOf(",1") != -1 || response.indexOf(",5") != -1);
 
-        vTaskDelay(pdMS_TO_TICKS(1000)); // update every 1 sec
+        if (self->cachedRegistered && pollDelay < 1000) pollDelay = 1000;
+
+        vTaskDelay(pdMS_TO_TICKS(pollDelay));
     }
 }
 
@@ -90,8 +105,11 @@ void StatusBar::Draw(TFT_eSprite& screenBuff, bool inMenu, uint16_t bg_color) {
 
     // Battery
     String battStr = String(cachedBattery) + "%";
+    if (cachedCharging) battStr += "+";
     int battX = screenBuff.width() - screenBuff.textWidth(battStr) - 4;
+    screenBuff.setTextColor(cachedCharging ? TFT_GREEN : TFT_WHITE);
     screenBuff.drawString(battStr, battX, 4);
+    screenBuff.setTextColor(TFT_WHITE);
 
     // Signal bars / SIM800 registration
     if (cachedRegistered) {
