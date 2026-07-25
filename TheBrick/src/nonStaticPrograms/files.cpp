@@ -379,7 +379,6 @@ void FilesNonStaticApp::blitToScreen() {
     snprintf(buf, sizeof(buf), "%.2fx", zoom);
     screenBuff->setTextColor(TFT_WHITE, TFT_BLACK);
     screenBuff->drawString(buf, 4, 4);
-    screenBuff->pushSprite(0, 0);
 }
 
 void FilesNonStaticApp::drawImage() {

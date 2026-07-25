@@ -1,6 +1,17 @@
 #include "System/SystemUI/StatusBar.h"
 #include "System/systemDrivers.h"
 
+static String sim800CmdLocked(HardwareSerial& sim800, const char* cmd, int waitMs = 200) {
+    if (xSemaphoreTake(sim800Mutex, pdMS_TO_TICKS(100)) != pdTRUE) return "";
+    while (sim800.available()) sim800.read();
+    sim800.println(cmd);
+    delay(waitMs);
+    String response = "";
+    while (sim800.available()) response += (char)sim800.read();
+    xSemaphoreGive(sim800Mutex);
+    return response;
+}
+
 StatusBar& StatusBar::Get() {
     static StatusBar instance;
     return instance;
@@ -21,29 +32,18 @@ void StatusBar::Setup() {
     );
 }
 
-static String sim800Command(HardwareSerial& sim800, const char* cmd, int waitMs = 200) {
-    while (sim800.available()) sim800.read();
-    sim800.println(cmd);
-    delay(waitMs);
-    String response = "";
-    while (sim800.available()) response += (char)sim800.read();
-    return response;
-}
-
 void StatusBar::statusTask(void* param) {
     StatusBar* self = (StatusBar*)param;
     HardwareSerial& sim800 = SystemDrivers::Get().GetSim800();
 
-    // Kick SIM800 awake
-    sim800Command(sim800, "AT", 100);
-    sim800Command(sim800, "AT", 100);
-    sim800Command(sim800, "ATE0", 100);
-    sim800Command(sim800, "AT+CFUN=1", 300);
+    sim800CmdLocked(sim800, "AT", 100);
+    sim800CmdLocked(sim800, "AT", 100);
+    sim800CmdLocked(sim800, "ATE0", 100);
+    sim800CmdLocked(sim800, "AT+CFUN=1", 300);
 
     int pollDelay = 200;
 
     for(;;) {
-        // ---- Time ----
         if (rtcAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             DateTime now = self->rtc->now();
             xSemaphoreGive(i2cMutex);
@@ -52,7 +52,6 @@ void StatusBar::statusTask(void* param) {
             self->cachedTime = String(buffer);
         }
 
-        // ---- Battery ----
         if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             auto &ina = SystemDrivers::Get().GetINA219();
             float v = ina.getBusVoltage_V();
@@ -63,8 +62,7 @@ void StatusBar::statusTask(void* param) {
             self->cachedCharging = (mA > 0);
         }
 
-        // ---- SIM800 ----
-        String response = sim800Command(sim800, "AT+CSQ");
+        String response = sim800CmdLocked(sim800, "AT+CSQ");
         int rssi = -1;
         if (response.indexOf("+CSQ:") != -1) {
             int start = response.indexOf(":") + 2;
@@ -77,7 +75,7 @@ void StatusBar::statusTask(void* param) {
         else if (rssi < 20) self->cachedBars = 3;
         else self->cachedBars = 4;
 
-        response = sim800Command(sim800, "AT+CREG?");
+        response = sim800CmdLocked(sim800, "AT+CREG?");
         self->cachedRegistered = (response.indexOf(",1") != -1 || response.indexOf(",5") != -1);
 
         if (self->cachedRegistered && pollDelay < 1000) pollDelay = 1000;

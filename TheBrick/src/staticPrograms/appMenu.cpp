@@ -154,7 +154,7 @@ void AppMenu::Draw() {
     screenBuff->printf("FPS: %.1f", currentFPS);
     */
 
-    StatusBar::Get().Draw(*screenBuff, true, NO_BG_COLOR);
+    // status bar drawn by main loop
 }
 
 const uint16_t *AppMenu::getIcon() {

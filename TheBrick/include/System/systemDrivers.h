@@ -15,8 +15,10 @@
 #include <Adafruit_INA219.h>
 
 extern SemaphoreHandle_t i2cMutex;
+extern SemaphoreHandle_t sim800Mutex;
 extern bool mcpAvailable;
 extern bool rtcAvailable;
+extern bool sdAvailable;
 
 class SystemDrivers : public StaticApp
 {

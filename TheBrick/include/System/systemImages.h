@@ -15,5 +15,6 @@ extern const uint16_t Phone[48][48];
 extern const uint16_t Files[48][48];
 extern const uint16_t Player[48][48];
 extern const uint16_t Settings[48][48];
+extern const uint16_t SMS[48][48];
 
 };

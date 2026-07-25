@@ -1,8 +1,10 @@
 #include "System/systemDrivers.h"
 #include "System/buttonHandler.h"
 #include "staticPrograms/mainMenu.h"
+#include "staticPrograms/appMenu.h"
 #include "appTemplates/staticApp.h"
 #include "System/systemCommon.h"
+#include "System/SystemUI/QuickSettings.h"
 
 TFT_eSprite *screenBuff;
 
@@ -86,11 +88,20 @@ void loop() {
 
  TouchPoint receivedPoints[2];
   static int swipeStartX = 0;
+  QuickSettings& qs = QuickSettings::Get();
 
   if (xQueueReceive(touchEventQueue, &receivedPoints, 0)) {
       int count = 0;
       if (receivedPoints[0].type != NONE) count++;
       if (receivedPoints[1].type != NONE) count++;
+
+      if (qs.IsOpen()) {
+          qs.UpdateTouch(receivedPoints, count);
+          goto skipTouch;
+      }
+
+      qs.CheckSwipeOpen(receivedPoints[0]);
+      if (qs.IsOpen() || qs.IsAnimating()) goto skipTouch;
 
       if (receivedPoints[0].type == SLIDE_BEGIN) {
           swipeStartX = receivedPoints[0].x;
@@ -106,6 +117,12 @@ void loop() {
       skipTouch:;
   }
 
+  AppBase* currentApp = SystemCommon::Get().GetCurrentApp();
+  bool isMenu = (currentApp == (AppBase*)&MainMenu::Get() || currentApp == (AppBase*)&AppMenu::Get());
+  StatusBar::Get().Draw(*screenBuff, isMenu, TFT_BLACK);
+
+  if (qs.IsOpen() || qs.IsAnimating())
+      qs.Draw(*screenBuff);
 
   screenBuff->pushSprite(0, 0);
 

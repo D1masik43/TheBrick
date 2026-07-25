@@ -7,4 +7,5 @@
 #include "staticPrograms/files_wrapper.h"
 #include "staticPrograms/player_wrapper.h"
 #include "staticPrograms/sysinfo_wrapper.h"
+#include "staticPrograms/sms_wrapper.h"
 #include "System/SystemUI/StatusBar.h"

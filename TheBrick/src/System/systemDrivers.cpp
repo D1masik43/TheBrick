@@ -1,8 +1,10 @@
 #include "System/systemDrivers.h"
 
 SemaphoreHandle_t i2cMutex = nullptr;
+SemaphoreHandle_t sim800Mutex = nullptr;
 bool mcpAvailable = false;
 bool rtcAvailable = false;
+bool sdAvailable = false;
 
 SystemDrivers &SystemDrivers::Get(std::string name) {
     static SystemDrivers instance(name);
@@ -72,6 +74,7 @@ void SystemDrivers::Setup() {
 
     //  ====    I2C  ====
     i2cMutex = xSemaphoreCreateMutex();
+    sim800Mutex = xSemaphoreCreateMutex();
     Wire.begin(45, 48);
     Wire.setClock(400000);
 
@@ -155,29 +158,25 @@ void SystemDrivers::Setup() {
         Serial.println("RTC NOT found");
         rtcAvailable = false;
     } else {
-    Serial.println("RTC found");
-    rtcAvailable = true;
-    if (rtc.lostPower()) {
-        Serial.println("RTC lost power, setting time!");
-        rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        Serial.println("RTC found");
+        rtcAvailable = true;
+        if (rtc.lostPower()) {
+            Serial.println("RTC lost power, setting time!");
+            rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+        }
     }
 
     // ==== eMMC SD ====
     SD_MMC.setPins(39, 38, 40);
-        if(!SD_MMC.begin("/sdcard", true)){
+    if (!SD_MMC.begin("/sdcard", true)) {
         Serial.println("SD Card Mount Failed");
+        sdAvailable = false;
+    } else {
+        sdAvailable = true;
+        Serial.println("SD Card initialized.");
+        uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
+        Serial.printf("SD Card Size: %llu MB\n", cardSize);
     }
-
-    Serial.println("SD Card initialized.");
-
-
-    uint64_t cardSize = SD_MMC.cardSize() / (1024 * 1024);
-    Serial.printf("SD Card Size: %llu MB\n", cardSize);
-
-
-    
-
-}
 
 }
 

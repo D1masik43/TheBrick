@@ -128,8 +128,7 @@ void PlayerNonStaticApp::Draw() {
     volUpBtn.Draw(*screenBuff);
     volDownBtn.Draw(*screenBuff);
     
-    // Push to display (assuming SystemDrivers handles the push or you do it here)
-    SystemDrivers::Get().GetTFT().pushImage(0, 0, 240, 320, (uint16_t*)screenBuff->getPointer());
+    // main loop handles pushSprite + status bar
 }
 
 void PlayerNonStaticApp::CloseApp() {

@@ -2,6 +2,7 @@
 
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
+#include "System/SystemUI/Scrollable.h"
 
 class Mainmenu;
 class Appmenu;
@@ -23,11 +24,14 @@ public:
 
 private:
     TFT_eSprite *screenBuff;
-    int scrollY = 0;
+    Scrollable scroll;
     unsigned long lastUpdate = 0;
 
     float inaVoltage = 0;
     float inaCurrent = 0;
     float inaPower = 0;
     float inaShunt = 0;
+
+    uint8_t i2cAddrs[16];
+    int i2cCount = 0;
 };

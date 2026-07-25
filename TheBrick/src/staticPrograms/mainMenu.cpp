@@ -88,8 +88,6 @@ void MainMenu::Setup() {
 
 void MainMenu::Draw() {
     screenBuff->pushImage(0, 0, 240, 320, (const uint16_t*)wallpaper);
-    
-    StatusBar::Get().Draw(*screenBuff, true, NO_BG_COLOR);
 
     /*screenBuff->pushImage(0, 0, 240, 20, (const uint16_t*)wallpaperBlurred);
     size_t free_dram = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
