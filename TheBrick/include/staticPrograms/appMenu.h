@@ -37,7 +37,7 @@ class AppMenu : public StaticApp
     AppBase *appList[3][6] = {
         {&CameraAppNonStaticAppWrapper::Get(), &FilesAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
         {&PhoneAppNonStaticAppWrapper::Get(),  &PlayerAppNonStaticAppWrapper::Get(), &SmsAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
-        {&SysInfoAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
+        {&SysInfoAppNonStaticAppWrapper::Get(), &UsbmsAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get(), &DummyAppNonStaticAppWrapper::Get()},
     };
 
 
