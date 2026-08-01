@@ -1,5 +1,6 @@
 #include "nonStaticPrograms/player.h"
 #include "staticPrograms/mainMenu.h"
+#include "driver/i2s.h"
 
 PlayerNonStaticApp::PlayerNonStaticApp(const std::string& name) : NonStaticApp(name) {}
 
@@ -9,12 +10,13 @@ void PlayerNonStaticApp::Setup() {
 
     if (mcpAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         auto &mcp = SystemDrivers::Get().GetMCP();
-        mcp.pinMode(15, OUTPUT);
-        mcp.digitalWrite(15, HIGH);
+        mcp.pinMode(AMP_SD_PIN, OUTPUT);
+        mcp.digitalWrite(AMP_SD_PIN, HIGH);
         xSemaphoreGive(i2cMutex);
     }
 
     Audio &audio = SystemDrivers::Get().GetAudio();
+    i2s_start(I2S_NUM_0);
     audio.setPinout(42, 41, 2);
     audio.setVolume(volume);
 
@@ -137,8 +139,9 @@ void PlayerNonStaticApp::CloseApp() {
         vTaskDelete(audioTaskHandle);
         audioTaskHandle = nullptr;
     }
+    i2s_stop(I2S_NUM_0);
     if (mcpAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
-        SystemDrivers::Get().GetMCP().digitalWrite(15, LOW);
+        SystemDrivers::Get().GetMCP().digitalWrite(AMP_SD_PIN, LOW);
         xSemaphoreGive(i2cMutex);
     }
     playlist.clear();

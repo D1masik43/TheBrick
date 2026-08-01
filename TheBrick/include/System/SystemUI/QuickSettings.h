@@ -34,6 +34,7 @@ private:
     static const int PANEL_OPEN_Y = 0;
 
     bool _dndEnabled = false;
+    bool _ledEnabled = false;
 
     QSSlider _volumeSlider;
     QSSlider _brightnessSlider;

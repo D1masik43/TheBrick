@@ -68,6 +68,7 @@ void buttonTask(void *pvParameters)
     auto &mcp = SystemDrivers::Get().GetMCP();
     if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(50)) == pdTRUE) {
         for (int i = 0; i < 16; i++) {
+            if (i == AMP_SD_PIN || i == LED_PIN) continue;
             mcp.pinMode(i, INPUT_PULLUP);
         }
         xSemaphoreGive(i2cMutex);

@@ -23,4 +23,7 @@
 #define BUTTON_KEY1     3
 #define BUTTON_KEY2     4
 
+#define AMP_SD_PIN      15
+#define LED_PIN         14
+
 #define NO_BG_COLOR 0xFFFF

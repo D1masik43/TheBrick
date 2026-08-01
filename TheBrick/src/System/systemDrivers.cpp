@@ -115,6 +115,10 @@ void SystemDrivers::Setup() {
     {
         Serial.println("MCP good");
         mcpAvailable = true;
+        mcp.pinMode(AMP_SD_PIN, OUTPUT);
+        mcp.digitalWrite(AMP_SD_PIN, LOW);
+        mcp.pinMode(LED_PIN, OUTPUT);
+        mcp.digitalWrite(LED_PIN, LOW);
     }
     else
     {

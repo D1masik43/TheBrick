@@ -77,9 +77,17 @@ void QuickSettings::UpdateTouch(const TouchPoint* touches, int count) {
         return;
     }
 
+    if (_flashToggle.HandleTouch(adjusted)) {
+        _ledEnabled = _flashToggle.IsEnabled();
+        if (mcpAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+            SystemDrivers::Get().GetMCP().digitalWrite(LED_PIN, _ledEnabled ? HIGH : LOW);
+            xSemaphoreGive(i2cMutex);
+        }
+        return;
+    }
+
     _wifiToggle.HandleTouch(adjusted);
     _btToggle.HandleTouch(adjusted);
-    _flashToggle.HandleTouch(adjusted);
 }
 
 void QuickSettings::Draw(TFT_eSprite& sprite) {
