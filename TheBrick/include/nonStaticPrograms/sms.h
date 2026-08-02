@@ -2,6 +2,7 @@
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
 #include "System/SystemUI/Scrollable.h"
+#include "System/SystemUI/Keyboard.h" it 
 #include <vector>
 
 class MainMenu;

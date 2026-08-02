@@ -5,6 +5,7 @@
 #include "appTemplates/staticApp.h"
 #include "System/systemCommon.h"
 #include "System/SystemUI/QuickSettings.h"
+#include "System/SystemUI/Keyboard.h"
 
 TFT_eSprite *screenBuff;
 
@@ -83,7 +84,8 @@ void loop() {
     if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))
     {
       Serial.println(buttonIndex);
-      SystemCommon::Get().GetCurrentApp()->UpdateButtons(buttonIndex);
+      if (!Keyboard::Get().HandleButton(buttonIndex))
+          SystemCommon::Get().GetCurrentApp()->UpdateButtons(buttonIndex);
     }
 
  TouchPoint receivedPoints[2];
@@ -94,6 +96,11 @@ void loop() {
       int count = 0;
       if (receivedPoints[0].type != NONE) count++;
       if (receivedPoints[1].type != NONE) count++;
+
+      if (Keyboard::Get().IsOpen()) {
+          Keyboard::Get().HandleTouch(receivedPoints[0]);
+          goto skipTouch;
+      }
 
       if (qs.IsOpen()) {
           qs.UpdateTouch(receivedPoints, count);
@@ -123,6 +130,9 @@ void loop() {
 
   if (qs.IsOpen() || qs.IsAnimating())
       qs.Draw(*screenBuff);
+
+  if (Keyboard::Get().IsOpen())
+      Keyboard::Get().Draw(*screenBuff);
 
   screenBuff->pushSprite(0, 0);
 

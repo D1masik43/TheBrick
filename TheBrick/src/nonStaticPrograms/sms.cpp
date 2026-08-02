@@ -308,6 +308,9 @@ void SmsNonStaticApp::UpdateButtons(int button) {
         }
         if (button == BUTTON_BACK) SystemCommon::Get().SetNextApp(&AppMenu::Get());
         if (button == BUTTON_HOME) SystemCommon::Get().SetNextApp(&MainMenu::Get());
+        if (button == BUTTON_KEY2) {
+      
+        }
         if (button == BUTTON_KEY1) { loading = true; }
         break;
 

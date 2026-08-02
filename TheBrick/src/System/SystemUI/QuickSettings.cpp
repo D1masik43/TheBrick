@@ -1,6 +1,8 @@
 #include "System/SystemUI/QuickSettings.h"
 #include "System/systemDrivers.h"
 #include "System/systemImages.h"
+#include "System/systemCommon.h"
+#include "staticPrograms/wifi_wrapper.h"
 
 QuickSettings& QuickSettings::Get() {
     static QuickSettings instance;
@@ -86,7 +88,13 @@ void QuickSettings::UpdateTouch(const TouchPoint* touches, int count) {
         return;
     }
 
-    _wifiToggle.HandleTouch(adjusted);
+    if (_wifiToggle.HandleTouch(adjusted)) {
+        _open = false;
+        _animating = true;
+        _targetY = PANEL_CLOSED_Y;
+        SystemCommon::Get().SetNextApp(&WifiAppNonStaticAppWrapper::Get());
+        return;
+    }
     _btToggle.HandleTouch(adjusted);
 }
 
