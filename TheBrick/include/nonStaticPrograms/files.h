@@ -35,19 +35,19 @@ private:
 
     // --- Image viewer state ---
     bool displayingImage = false;
-    bool needsRedraw     = false;  // set true when pan/zoom changes
+    bool needsRedraw     = false;
 
-    uint8_t*  jpgBuf = nullptr;   // compressed JPEG in PSRAM
+    uint8_t*  jpgBuf = nullptr;
     size_t    jpgLen = 0;
     int imgW = 0, imgH = 0;
 
-    // Decoded buffer — persists between frames, only re-decoded on zoom change
     uint16_t* decBuf  = nullptr;
     int       decBufW = 0, decBufH = 0;
-    int       curDivisor = -1;    // divisor used for current decBuf
+    int       curDivisor = -1;
+    String    decodeError;
 
     float zoom    = 1.0f;
-    float minZoom = 0.1f;   // recalculated on open
+    float minZoom = 0.1f;
     float maxZoom = 8.0f;
     float panX = 0, panY = 0;
 
@@ -65,8 +65,8 @@ private:
     void drawFileList();
     void openImage(const String& filename);
     void closeImage();
-    void decodeToBuffer(int divisor);   // decode JPEG at given scale into decBuf
-    void blitToScreen();                // blit decBuf → screenBuff using pan/zoom
+    void decodeToBuffer(int divisor);
+    void blitToScreen();
     void drawImage();
     void clampPan();
     int  chooseDivisor() const;

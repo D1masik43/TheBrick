@@ -26,14 +26,51 @@ static bool jpgCallback(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* 
     return true;
 }
 
+// Proper marker-walking JPEG parser — skips EXIF/APP payloads correctly
+static bool isProgressiveJpeg(const uint8_t* buf, size_t len) {
+    if (len < 2 || buf[0] != 0xFF || buf[1] != 0xD8) return false;
+    size_t pos = 2;
+    while (pos + 1 < len) {
+        if (buf[pos] != 0xFF) { pos++; continue; }
+        uint8_t marker = buf[pos + 1];
+        if (marker == 0xFF) { pos++; continue; }
+        if (marker == 0xC2) return true;
+        if (marker == 0xC0) return false;
+        if (marker == 0xDA || marker == 0xD9) return false;
+        if (marker == 0x00 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD9)) {
+            pos += 2;
+            continue;
+        }
+        if (pos + 3 >= len) break;
+        uint16_t mlen = (buf[pos + 2] << 8) | buf[pos + 3];
+        pos += 2 + mlen;
+    }
+    return false;
+}
+
 static void getJpgSize(const uint8_t* buf, size_t len, int& w, int& h) {
     w = h = 0;
-    for (size_t i = 0; i + 9 < len; i++) {
-        if (buf[i] == 0xFF && buf[i+1] >= 0xC0 && buf[i+1] <= 0xC3) {
-            h = (buf[i+5] << 8) | buf[i+6];
-            w = (buf[i+7] << 8) | buf[i+8];
+    if (len < 2 || buf[0] != 0xFF || buf[1] != 0xD8) return;
+    size_t pos = 2;
+    while (pos + 1 < len) {
+        if (buf[pos] != 0xFF) { pos++; continue; }
+        uint8_t marker = buf[pos + 1];
+        if (marker == 0xFF) { pos++; continue; }
+        if (marker >= 0xC0 && marker <= 0xC3) {
+            if (pos + 8 < len) {
+                h = (buf[pos + 5] << 8) | buf[pos + 6];
+                w = (buf[pos + 7] << 8) | buf[pos + 8];
+            }
             return;
         }
+        if (marker == 0xDA || marker == 0xD9) return;
+        if (marker == 0x00 || marker == 0x01 || (marker >= 0xD0 && marker <= 0xD9)) {
+            pos += 2;
+            continue;
+        }
+        if (pos + 3 >= len) break;
+        uint16_t mlen = (buf[pos + 2] << 8) | buf[pos + 3];
+        pos += 2 + mlen;
     }
 }
 
@@ -180,13 +217,10 @@ void FilesNonStaticApp::Draw() {
             drawImage();
             needsRedraw = false;
         }
-        // if no redraw needed, the sprite already has the last frame — 
-        // main loop's pushSprite will just re-push the same pixels (free)
         return;
     }
     screenBuff->fillSprite(TFT_BLACK);
     drawFileList();
-    // note: main loop calls pushSprite, we don't need to here
 }
 
 // ---------------------------------------------------------------------------
@@ -234,11 +268,25 @@ void FilesNonStaticApp::openImage(const String& filename) {
     }
     file.close();
 
+    if (isProgressiveJpeg(jpgBuf, jpgLen)) {
+        decodeError = "Progressive JPEG not supported";
+        free(jpgBuf); jpgBuf = nullptr;
+        displayingImage = true;
+        needsRedraw = true;
+        return;
+    }
+
     getJpgSize(jpgBuf, jpgLen, imgW, imgH);
     Serial.printf("Image: %dx%d, %u bytes\n", imgW, imgH, jpgLen);
 
-    // zoom=1.0 → 1 image pixel per screen pixel
-    // minZoom → whole image fits screen
+    if (imgW == 0 || imgH == 0) {
+        decodeError = "Could not read JPEG dimensions";
+        free(jpgBuf); jpgBuf = nullptr;
+        displayingImage = true;
+        needsRedraw = true;
+        return;
+    }
+
     float fitX = (float)screenBuff->width()  / (float)imgW;
     float fitY = (float)screenBuff->height() / (float)imgH;
     minZoom = std::min(fitX, fitY);
@@ -258,7 +306,6 @@ void FilesNonStaticApp::openImage(const String& filename) {
 }
 
 void FilesNonStaticApp::clampPan() {
-    // At zoom z: visible image region = scrW/zoom × scrH/zoom image pixels
     float visW = (float)screenBuff->width()  / zoom;
     float visH = (float)screenBuff->height() / zoom;
 
@@ -277,22 +324,15 @@ void FilesNonStaticApp::closeImage() {
     curDivisor = -1;
     displayingImage = false;
     needsRedraw     = false;
+    decodeError     = "";
 }
 
 // ---------------------------------------------------------------------------
 // Choose TJpgDec divisor based on zoom
 // ---------------------------------------------------------------------------
 int FilesNonStaticApp::chooseDivisor() const {
-    
     int scrW = screenBuff->width();
     int scrH = screenBuff->height();
-    
-    // How many image pixels are visible across the screen at current zoom?
-    float visibleImgW = (float)scrW / zoom;   // image pixels spanning the screen
-    float visibleImgH = (float)scrH / zoom;
-    
-
-    float maxDivisorF = (float)imgW / (float)scrW;
 
     int divisor = 1;
     for (int d : {8, 4, 2, 1}) {
@@ -305,20 +345,19 @@ int FilesNonStaticApp::chooseDivisor() const {
 }
 
 // ---------------------------------------------------------------------------
-// Decode JPEG → decBuf at given divisor (only called when zoom tier changes)
+// Decode JPEG into decBuf via TJpgDec
 // ---------------------------------------------------------------------------
 void FilesNonStaticApp::decodeToBuffer(int divisor) {
     int newW = std::max(1, imgW / divisor);
     int newH = std::max(1, imgH / divisor);
     size_t needed = (size_t)newW * newH * sizeof(uint16_t);
 
-    // Reallocate only if size changed
     if (newW != decBufW || newH != decBufH || !decBuf) {
         if (decBuf) free(decBuf);
         decBuf = (uint16_t*)heap_caps_malloc(needed, MALLOC_CAP_SPIRAM);
         if (!decBuf) {
-            Serial.printf("decBuf alloc failed %u bytes\n", needed);
             decBufW = decBufH = 0;
+            decodeError = "Out of memory";
             return;
         }
         decBufW = newW;
@@ -337,11 +376,11 @@ void FilesNonStaticApp::decodeToBuffer(int divisor) {
     TJpgDec.drawJpg(0, 0, jpgBuf, jpgLen);
 
     curDivisor = divisor;
-    Serial.printf("Decoded at 1/%d → %dx%d\n", divisor, newW, newH);
+    Serial.printf("Decoded at 1/%d -> %dx%d\n", divisor, newW, newH);
 }
 
 // ---------------------------------------------------------------------------
-// Blit decBuf → screenBuff with current pan/zoom (fast, no JPEG decode)
+// Blit decBuf -> screenBuff with current pan/zoom
 // ---------------------------------------------------------------------------
 void FilesNonStaticApp::blitToScreen() {
     if (!decBuf || !decBufW || !decBufH) return;
@@ -349,13 +388,6 @@ void FilesNonStaticApp::blitToScreen() {
     int scrW = screenBuff->width();
     int scrH = screenBuff->height();
 
-    // zoom is absolute: zoom=1.0 means 1 image pixel = 1 screen pixel
-    // At zoom=minZoom the whole image fits.
-    // Screen pixel (sx,sy) maps to image pixel:
-    //   imgX = panX + sx / zoom
-    //   imgY = panY + sy / zoom
-    // In decoded buffer (divisor d):
-    //   decX = imgX / d = panX/d + sx / (zoom * d)
     float decPanX = panX / (float)curDivisor;
     float decPanY = panY / (float)curDivisor;
     float stepX   = 1.0f / (zoom * (float)curDivisor);
@@ -382,6 +414,15 @@ void FilesNonStaticApp::blitToScreen() {
 }
 
 void FilesNonStaticApp::drawImage() {
-    if (!jpgBuf || !decBuf) return;
+    if (decodeError.length()) {
+        screenBuff->fillSprite(TFT_BLACK);
+        screenBuff->setTextColor(TFT_RED);
+        screenBuff->setTextDatum(MC_DATUM);
+        screenBuff->drawString(decodeError.c_str(), 120, 150);
+        screenBuff->setTextColor(TFT_DARKGREY);
+        screenBuff->drawString("(tap to go back)", 120, 180);
+        screenBuff->setTextDatum(TL_DATUM);
+        return;
+    }
     blitToScreen();
 }
