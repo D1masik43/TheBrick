@@ -9,4 +9,5 @@
 #include "staticPrograms/sysinfo_wrapper.h"
 #include "staticPrograms/sms_wrapper.h"
 #include "staticPrograms/usbms_wrapper.h"
+#include "staticPrograms/xmpp_wrapper.h"
 #include "System/SystemUI/StatusBar.h"
