@@ -1,5 +1,6 @@
 #include "System/SystemUI/StatusBar.h"
 #include "System/systemDrivers.h"
+#include "System/systemImages.h"
 
 static String sim800CmdLocked(HardwareSerial& sim800, const char* cmd, int waitMs = 200) {
     if (xSemaphoreTake(sim800Mutex, pdMS_TO_TICKS(100)) != pdTRUE) return "";
@@ -140,15 +141,15 @@ void StatusBar::Draw(TFT_eSprite& screenBuff, bool inMenu, uint16_t bg_color) {
         gsmRight = x;
     }
 
-    // WiFi signal bars
+    // WiFi icon
     if (cachedWifiOn) {
-        int barWidth = 3, barSpacing = 2;
-        int wifiBaseX = gsmRight - (barWidth + barSpacing) * 4 - 4;
-        uint16_t arcColor = (cachedWifiBars > 0) ? TFT_CYAN : TFT_DARKGREY;
-        for (int i = 0; i < 4; i++) {
-            int h = (i + 1) * 3;
-            uint16_t color = (i < cachedWifiBars) ? arcColor : TFT_DARKGREY;
-            screenBuff.fillRect(wifiBaseX + i * (barWidth + barSpacing), 16 - h, barWidth, h, color);
-        }
+        int icoW = 12, icoH = 12;
+        int icoX = gsmRight - icoW - 4;
+        int icoY = (18 - icoH) / 2;
+        uint16_t tint = (cachedWifiBars > 0) ? TFT_CYAN : TFT_DARKGREY;
+        for (int py = 0; py < icoH; py++)
+            for (int px = 0; px < icoW; px++)
+                if (Icons::WiFiIco[py][px] != 0x0000)
+                    screenBuff.drawPixel(icoX + px, icoY + py, tint);
     }
 }

@@ -3,6 +3,7 @@
 #include "System/systemImages.h"
 #include "System/systemCommon.h"
 #include "staticPrograms/wifi_wrapper.h"
+#include <WiFi.h>
 
 QuickSettings& QuickSettings::Get() {
     static QuickSettings instance;
@@ -143,6 +144,7 @@ void QuickSettings::Draw(TFT_eSprite& sprite) {
     _brightnessSlider.Draw(sprite, oY);
 
     // toggles
+    _wifiToggle.SetEnabled(WiFi.status() == WL_CONNECTED);
     _wifiToggle.Draw(sprite, oY);
     _btToggle.Draw(sprite, oY);
     _dndToggle.Draw(sprite, oY);

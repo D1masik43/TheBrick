@@ -23,8 +23,9 @@ private:
     String _prompt;
     std::function<void(const String&)> _callback;
 
-    enum Mode { LOWER, UPPER, SYMBOLS };
+    enum Mode { LOWER, UPPER, SYMBOLS, UA_LOWER, UA_UPPER };
     Mode _mode = LOWER;
+    Mode _preSymMode = LOWER;
 
     static const int TEXT_H = 80;
     static const int ROW_H  = 60;
@@ -32,5 +33,10 @@ private:
     void submit();
     void drawKey(TFT_eSprite& spr, int x, int y, int w, int h,
                  const char* label, uint16_t bg);
-    char keyAt(int row, int col) const;
+    const char* keyAt(int row, int col) const;
+    int keysInRow(int row) const;
+    int keyWidth(int row) const;
+    int rowOffset(int row) const;
+    void removeLastChar();
+    bool isUA() const { return _mode == UA_LOWER || _mode == UA_UPPER; }
 };

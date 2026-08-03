@@ -18,5 +18,6 @@ extern const uint16_t Settings[48][48];
 extern const uint16_t SMS[48][48];
 extern const uint16_t USB[48][48];
 extern const uint16_t XMPP[48][48];
+extern const uint16_t WiFiIco[12][12];
 
 };

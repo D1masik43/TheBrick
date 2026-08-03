@@ -2,6 +2,7 @@
 #include "staticPrograms/mainMenu.h"
 #include "staticPrograms/appMenu.h"
 #include "System/SystemUI/Keyboard.h"
+#include "fonts/cyrillic_draw.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <lwip/sockets.h>
@@ -98,19 +99,24 @@ void XmppNonStaticApp::loadChatFromSD(const String& jid) {
     String path = "/system/xmpp/" + sanitizeJid(jid) + ".txt";
     File f = SD_MMC.open(path, FILE_READ);
     if (!f) return;
+    int linesRead = 0, added = 0;
     while (f.available()) {
         String line = f.readStringUntil('\n');
         if (line.length() < 2) continue;
         bool out = (line[0] == '>');
         String body = line.substring(1);
         body.trim();
-        if (body.length() > 0)
-            _msgs.push_back({jid, body, out});
+        if (body.length() == 0) continue;
+        linesRead++;
+        bool dup = false;
+        for (int i = _msgs.size() - 1; i >= 0; i--) {
+            if (_msgs[i].jid == jid && _msgs[i].body == body && _msgs[i].outgoing == out) {
+                dup = true; break;
+            }
+        }
+        if (!dup) { _msgs.push_back({jid, body, out}); added++; }
     }
     f.close();
-    if (_msgs.size() > 200) {
-        _msgs.erase(_msgs.begin(), _msgs.begin() + (_msgs.size() - 200));
-    }
 }
 
 void XmppNonStaticApp::appendMsgToSD(const String& jid, const String& body, bool outgoing) {
@@ -347,11 +353,11 @@ void XmppNonStaticApp::parseStanza(const String& s) {
 
     Serial.printf("[XMPP] %s jid=%s body=%s\n", outgoing ? "OUT" : "IN", contactJid.c_str(), body.c_str());
 
-    // deduplicate against existing messages
     xSemaphoreTake(_mutex, portMAX_DELAY);
     bool dup = false;
-    for (int i = _msgs.size() - 1; i >= 0 && i >= (int)_msgs.size() - 10; i--) {
-        if (_msgs[i].jid == contactJid && _msgs[i].body == body && _msgs[i].outgoing == outgoing) {
+    for (int i = _msgs.size() - 1; i >= 0; i--) {
+        if (_msgs[i].jid != contactJid) continue;
+        if (_msgs[i].body == body && _msgs[i].outgoing == outgoing) {
             dup = true; break;
         }
     }
@@ -584,6 +590,7 @@ void XmppNonStaticApp::Setup() {
     loadSettings();
     ensureXmppDirs();
     loadContactsFromSD();
+    for (auto& c : _contacts) loadChatFromSD(c);
     if (_server.length() > 0 && _jid.length() > 0 && _pass.length() > 0) {
         if (!_contacts.empty()) {
             _view = XV_CONTACTS;
@@ -603,12 +610,19 @@ void XmppNonStaticApp::Loop() {
 
     if (_view == XV_CHAT) {
         xSemaphoreTake(_mutex, portMAX_DELAY);
-        int count = 0;
-        for (auto& m : _msgs) if (m.jid == _chatJid) count++;
+        int totalLines = 0;
+        for (auto& m : _msgs) {
+            if (m.jid != _chatJid) continue;
+            int chars = 2;
+            const char* p = m.body.c_str();
+            while (*p) { if (((uint8_t)*p & 0xC0) != 0x80) chars++; p++; }
+            int maxC = hasCyrillic(m.body.c_str()) ? 28 : 38;
+            totalLines += max(1, (chars + maxC - 1) / maxC);
+        }
         xSemaphoreGive(_mutex);
-        if (count != _lastChatCount) {
-            _lastChatCount = count;
-            int totalH = count * 14;
+        if (totalLines != _lastChatCount) {
+            _lastChatCount = totalLines;
+            int totalH = totalLines * 14;
             int viewH = SCREEN_HEIGHT - 60;
             if (totalH > viewH) _scroll.scrollY = totalH - viewH;
         }
@@ -750,15 +764,21 @@ void XmppNonStaticApp::drawContacts() {
         if (i == _selContact)
             screenBuff->fillRect(0, y, 240, ITEM_H - 2, 0x1082);
 
-        screenBuff->setTextColor(TFT_CYAN);
         String disp = contacts[i];
-        if (disp.length() > 28) disp = disp.substring(0, 28);
-        screenBuff->drawString(disp.c_str(), 8, y + 4);
+        if ((int)disp.length() > 28) {
+            int cut = 28;
+            while (cut > 0 && (disp[cut] & 0xC0) == 0x80) cut--;
+            disp = disp.substring(0, cut);
+        }
+        drawStringAuto(*screenBuff, disp.c_str(), 8, y + 4, TFT_CYAN);
 
         String last = lastMsgs[i];
-        if (last.length() > 30) last = last.substring(0, 30);
-        screenBuff->setTextColor(TFT_DARKGREY);
-        screenBuff->drawString(last.c_str(), 8, y + 16);
+        if ((int)last.length() > 30) {
+            int cut = 30;
+            while (cut > 0 && (last[cut] & 0xC0) == 0x80) cut--;
+            last = last.substring(0, cut);
+        }
+        drawStringAuto(*screenBuff, last.c_str(), 8, y + 16, TFT_DARKGREY);
 
         screenBuff->drawLine(0, y + ITEM_H - 2, 240, y + ITEM_H - 2, 0x2104);
     }
@@ -768,10 +788,9 @@ void XmppNonStaticApp::drawChat() {
     screenBuff->setTextSize(1);
     screenBuff->setTextDatum(TL_DATUM);
 
-    screenBuff->setTextColor(TFT_CYAN);
     String disp = _chatJid;
     if (disp.length() > 28) disp = disp.substring(0, 28);
-    screenBuff->drawString(disp.c_str(), 8, 26);
+    drawStringAuto(*screenBuff, disp.c_str(), 8, 26, TFT_CYAN);
     screenBuff->drawLine(0, 38, 240, 38, 0x2104);
 
     int listTop = 40;
@@ -784,16 +803,33 @@ void XmppNonStaticApp::drawChat() {
     xSemaphoreGive(_mutex);
 
     int lineH = 14;
-    for (int i = 0; i < (int)chat.size(); i++) {
-        int y = listTop + i * lineH - _scroll.scrollY;
-        if (y + lineH < listTop) continue;
-        if (y > SCREEN_HEIGHT - bottomBar) break;
+    int curY = listTop - _scroll.scrollY;
 
-        screenBuff->setTextColor(chat[i].outgoing ? TFT_GREEN : TFT_WHITE);
-        String prefix = chat[i].outgoing ? "> " : "< ";
-        String line = prefix + chat[i].body;
-        if (line.length() > 36) line = line.substring(0, 36);
-        screenBuff->drawString(line.c_str(), 4, y);
+    for (int i = 0; i < (int)chat.size(); i++) {
+        uint16_t msgColor = chat[i].outgoing ? TFT_GREEN : TFT_WHITE;
+        String full = (chat[i].outgoing ? "> " : "< ") + chat[i].body;
+        bool cyr = hasCyrillic(full.c_str());
+        int maxC = cyr ? 28 : 38;
+
+        const char* p = full.c_str();
+        while (*p) {
+            const char* ls = p;
+            int cnt = 0;
+            while (*p && cnt < maxC) {
+                uint8_t b = (uint8_t)*p;
+                if (b < 0x80) p++;
+                else if ((b & 0xE0) == 0xC0) p += 2;
+                else if ((b & 0xF0) == 0xE0) p += 3;
+                else p += 4;
+                cnt++;
+            }
+            if (curY + lineH >= listTop && curY <= SCREEN_HEIGHT - bottomBar) {
+                String seg = full.substring(ls - full.c_str(), p - full.c_str());
+                drawStringAuto(*screenBuff, seg.c_str(), 4, curY, msgColor);
+            }
+            curY += lineH;
+        }
+        if (full.length() == 0) curY += lineH;
     }
 
     screenBuff->fillRect(0, SCREEN_HEIGHT - bottomBar, 240, bottomBar, 0x0841);
