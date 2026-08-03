@@ -301,7 +301,30 @@ void XmppNonStaticApp::parseStanza(const String& s) {
         return;
     }
     from = bare(from);
-    if (from == _jid) return;
+
+    // MAM archived messages: detect if this is our own outgoing message
+    bool outgoing = (from == _jid);
+
+    // for MAM: our own outgoing messages need the 'to' as the contact JID
+    String contactJid;
+    if (outgoing) {
+        int toS = s.indexOf("to=\"");
+        if (toS >= 0) {
+            toS += 4;
+            int toE = s.indexOf("\"", toS);
+            if (toE > toS) contactJid = bare(s.substring(toS, toE));
+        } else {
+            toS = s.indexOf("to='");
+            if (toS >= 0) {
+                toS += 4;
+                int toE = s.indexOf("'", toS);
+                if (toE > toS) contactJid = bare(s.substring(toS, toE));
+            }
+        }
+        if (contactJid.length() == 0) return;
+    } else {
+        contactJid = from;
+    }
 
     String body;
     int bodyS = s.indexOf("<body>");
@@ -322,17 +345,26 @@ void XmppNonStaticApp::parseStanza(const String& s) {
         }
     }
 
-    Serial.printf("[XMPP] from=%s body=%s\n", from.c_str(), body.c_str());
+    Serial.printf("[XMPP] %s jid=%s body=%s\n", outgoing ? "OUT" : "IN", contactJid.c_str(), body.c_str());
 
+    // deduplicate against existing messages
     xSemaphoreTake(_mutex, portMAX_DELAY);
-    _msgs.push_back({from, body, false});
-    if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
+    bool dup = false;
+    for (int i = _msgs.size() - 1; i >= 0 && i >= (int)_msgs.size() - 10; i--) {
+        if (_msgs[i].jid == contactJid && _msgs[i].body == body && _msgs[i].outgoing == outgoing) {
+            dup = true; break;
+        }
+    }
+    if (!dup) {
+        _msgs.push_back({contactJid, body, outgoing});
+        if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
+    }
     bool found = false;
-    for (auto& c : _contacts) { if (c == from) { found = true; break; } }
-    if (!found) _contacts.push_back(from);
+    for (auto& c : _contacts) { if (c == contactJid) { found = true; break; } }
+    if (!found) _contacts.push_back(contactJid);
     xSemaphoreGive(_mutex);
 
-    appendMsgToSD(from, body, false);
+    if (!dup) appendMsgToSD(contactJid, body, outgoing);
     if (!found) saveContactsToSD();
 }
 
@@ -450,6 +482,12 @@ void XmppNonStaticApp::connLoop() {
 
     // Send presence
     netSend("<presence/>");
+
+    // Request offline/archived messages (MAM XEP-0313)
+    netSend("<iq type='set' id='mam1'><query xmlns='urn:xmpp:mam:2'>"
+            "<set xmlns='http://jabber.org/protocol/rsm'><max>50</max></set>"
+            "</query></iq>");
+
     _progress = 7;
 
     // Main loop
@@ -458,12 +496,22 @@ void XmppNonStaticApp::connLoop() {
         if (data.length() > 0) {
             _recvBuf += data;
 
-            // strip presence and iq first so they don't contaminate message extraction
+            // strip presence stanzas precisely (find opening tag, not just closing)
             int end;
-            while ((end = _recvBuf.indexOf("</presence>")) >= 0)
-                _recvBuf = _recvBuf.substring(end + 11);
-            while ((end = _recvBuf.indexOf("</iq>")) >= 0)
-                _recvBuf = _recvBuf.substring(end + 5);
+            while ((end = _recvBuf.indexOf("</presence>")) >= 0) {
+                int start = _recvBuf.lastIndexOf("<presence", end);
+                if (start >= 0)
+                    _recvBuf = _recvBuf.substring(0, start) + _recvBuf.substring(end + 11);
+                else
+                    _recvBuf = _recvBuf.substring(end + 11);
+            }
+            while ((end = _recvBuf.indexOf("</iq>")) >= 0) {
+                int start = _recvBuf.lastIndexOf("<iq", end);
+                if (start >= 0)
+                    _recvBuf = _recvBuf.substring(0, start) + _recvBuf.substring(end + 5);
+                else
+                    _recvBuf = _recvBuf.substring(end + 5);
+            }
 
             while ((end = _recvBuf.indexOf("</message>")) >= 0) {
                 end += 10;
