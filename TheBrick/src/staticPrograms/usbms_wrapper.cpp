@@ -31,7 +31,7 @@ void UsbmsAppNonStaticAppWrapper::Draw() {
 }
 
 const uint16_t* UsbmsAppNonStaticAppWrapper::getIcon() {
-    return &Icons::usbbms[0][0];
+    return &Icons::USB[0][0];
 }
 
 std::string UsbmsAppNonStaticAppWrapper::GetName() const {

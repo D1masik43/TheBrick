@@ -2,6 +2,7 @@
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
 #include "System/SystemUI/Scrollable.h"
+#include <SD_MMC.h>
 #include <vector>
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
@@ -79,6 +80,12 @@ private:
     void drawStatus();
     void drawContacts();
     void drawChat();
+
+    void loadChatFromSD(const String& jid);
+    void appendMsgToSD(const String& jid, const String& body, bool outgoing);
+    void saveContactsToSD();
+    void loadContactsFromSD();
+    void ensureXmppDirs();
 
     static const int ITEM_H = 36;
 };

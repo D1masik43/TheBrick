@@ -52,6 +52,77 @@ static int tls_recv_cb(void* ctx, unsigned char* buf, size_t len) {
 XmppNonStaticApp::XmppNonStaticApp(const std::string& name)
     : NonStaticApp(name) {}
 
+// ========== SD Persistence ==========
+
+static String sanitizeJid(const String& jid) {
+    String s;
+    for (unsigned int i = 0; i < jid.length(); i++) {
+        char c = jid[i];
+        if (isalnum(c) || c == '-' || c == '_' || c == '.') s += c;
+        else s += '_';
+    }
+    return s;
+}
+
+void XmppNonStaticApp::ensureXmppDirs() {
+    SD_MMC.mkdir("/system");
+    SD_MMC.mkdir("/system/xmpp");
+}
+
+void XmppNonStaticApp::saveContactsToSD() {
+    ensureXmppDirs();
+    File f = SD_MMC.open("/system/xmpp/contacts.txt", FILE_WRITE);
+    if (!f) return;
+    for (auto& c : _contacts) {
+        f.println(c);
+    }
+    f.close();
+}
+
+void XmppNonStaticApp::loadContactsFromSD() {
+    File f = SD_MMC.open("/system/xmpp/contacts.txt", FILE_READ);
+    if (!f) return;
+    while (f.available()) {
+        String line = f.readStringUntil('\n');
+        line.trim();
+        if (line.length() == 0) continue;
+        bool found = false;
+        for (auto& c : _contacts) { if (c == line) { found = true; break; } }
+        if (!found) _contacts.push_back(line);
+    }
+    f.close();
+}
+
+void XmppNonStaticApp::loadChatFromSD(const String& jid) {
+    ensureXmppDirs();
+    String path = "/system/xmpp/" + sanitizeJid(jid) + ".txt";
+    File f = SD_MMC.open(path, FILE_READ);
+    if (!f) return;
+    while (f.available()) {
+        String line = f.readStringUntil('\n');
+        if (line.length() < 2) continue;
+        bool out = (line[0] == '>');
+        String body = line.substring(1);
+        body.trim();
+        if (body.length() > 0)
+            _msgs.push_back({jid, body, out});
+    }
+    f.close();
+    if (_msgs.size() > 200) {
+        _msgs.erase(_msgs.begin(), _msgs.begin() + (_msgs.size() - 200));
+    }
+}
+
+void XmppNonStaticApp::appendMsgToSD(const String& jid, const String& body, bool outgoing) {
+    ensureXmppDirs();
+    String path = "/system/xmpp/" + sanitizeJid(jid) + ".txt";
+    File f = SD_MMC.open(path, FILE_APPEND);
+    if (!f) return;
+    f.print(outgoing ? ">" : "<");
+    f.println(body);
+    f.close();
+}
+
 // ========== Settings ==========
 
 void XmppNonStaticApp::loadSettings() {
@@ -203,19 +274,55 @@ String XmppNonStaticApp::bare(const String& jid) {
 
 void XmppNonStaticApp::parseStanza(const String& s) {
     if (s.indexOf("<message") < 0) return;
-    int fromS = s.indexOf("from=\"");
-    if (fromS < 0) return;
-    fromS += 6;
-    int fromE = s.indexOf("\"", fromS);
-    if (fromE < 0) return;
-    String from = bare(s.substring(fromS, fromE));
+    if (s.indexOf("<body>") < 0 && s.indexOf("encrypted") < 0 &&
+        s.indexOf("omemo") < 0 && s.indexOf("axolotl") < 0) {
+        Serial.println("[XMPP] skip: no body, not encrypted");
+        return;
+    }
+    if (s.indexOf("type=\"error\"") >= 0 || s.indexOf("type='error'") >= 0) return;
 
+    // extract from= with either quote type
+    String from;
+    int fromS = s.indexOf("from=\"");
+    if (fromS >= 0) {
+        fromS += 6;
+        int fromE = s.indexOf("\"", fromS);
+        if (fromE > fromS) from = s.substring(fromS, fromE);
+    } else {
+        fromS = s.indexOf("from='");
+        if (fromS >= 0) {
+            fromS += 6;
+            int fromE = s.indexOf("'", fromS);
+            if (fromE > fromS) from = s.substring(fromS, fromE);
+        }
+    }
+    if (from.length() == 0) {
+        Serial.println("[XMPP] skip: no from attr");
+        return;
+    }
+    from = bare(from);
+    if (from == _jid) return;
+
+    String body;
     int bodyS = s.indexOf("<body>");
-    if (bodyS < 0) return;
-    bodyS += 6;
-    int bodyE = s.indexOf("</body>", bodyS);
-    if (bodyE < 0) return;
-    String body = xmlDec(s.substring(bodyS, bodyE));
+    if (bodyS >= 0) {
+        bodyS += 6;
+        int bodyE = s.indexOf("</body>", bodyS);
+        if (bodyE >= 0)
+            body = xmlDec(s.substring(bodyS, bodyE));
+    }
+
+    if (body.length() == 0) {
+        if (s.indexOf("encrypted") >= 0 || s.indexOf("omemo") >= 0 ||
+            s.indexOf("axolotl") >= 0 || s.indexOf("openpgp") >= 0)
+            body = "[encrypted]";
+        else {
+            Serial.println("[XMPP] skip: body empty after parse");
+            return;
+        }
+    }
+
+    Serial.printf("[XMPP] from=%s body=%s\n", from.c_str(), body.c_str());
 
     xSemaphoreTake(_mutex, portMAX_DELAY);
     _msgs.push_back({from, body, false});
@@ -224,6 +331,9 @@ void XmppNonStaticApp::parseStanza(const String& s) {
     for (auto& c : _contacts) { if (c == from) { found = true; break; } }
     if (!found) _contacts.push_back(from);
     xSemaphoreGive(_mutex);
+
+    appendMsgToSD(from, body, false);
+    if (!found) saveContactsToSD();
 }
 
 // ========== Connection Task ==========
@@ -347,17 +457,25 @@ void XmppNonStaticApp::connLoop() {
         String data = netRecv();
         if (data.length() > 0) {
             _recvBuf += data;
+
+            // strip presence and iq first so they don't contaminate message extraction
             int end;
-            while ((end = _recvBuf.indexOf("</message>")) >= 0) {
-                end += 10;
-                parseStanza(_recvBuf.substring(0, end));
-                _recvBuf = _recvBuf.substring(end);
-            }
             while ((end = _recvBuf.indexOf("</presence>")) >= 0)
                 _recvBuf = _recvBuf.substring(end + 11);
             while ((end = _recvBuf.indexOf("</iq>")) >= 0)
                 _recvBuf = _recvBuf.substring(end + 5);
-            if ((int)_recvBuf.length() > 4096)
+
+            while ((end = _recvBuf.indexOf("</message>")) >= 0) {
+                end += 10;
+                int start = _recvBuf.lastIndexOf("<message", end);
+                if (start >= 0) {
+                    String stanza = _recvBuf.substring(start, end);
+                    Serial.printf("[XMPP-MSG] %s\n", stanza.c_str());
+                    parseStanza(stanza);
+                }
+                _recvBuf = _recvBuf.substring(end);
+            }
+            if ((int)_recvBuf.length() > 8192)
                 _recvBuf = "";
         }
 
@@ -365,13 +483,16 @@ void XmppNonStaticApp::connLoop() {
             String msg = "<message to='" + xmlEnc(_outTo) + "' type='chat' id='m" +
                          String(millis()) + "'><body>" + xmlEnc(_outBody) + "</body></message>";
             netSend(msg);
+            String bareJid = bare(_outTo);
             xSemaphoreTake(_mutex, portMAX_DELAY);
-            _msgs.push_back({bare(_outTo), _outBody, true});
+            _msgs.push_back({bareJid, _outBody, true});
             if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
             bool found = false;
-            for (auto& c : _contacts) { if (c == bare(_outTo)) { found = true; break; } }
-            if (!found) _contacts.push_back(bare(_outTo));
+            for (auto& c : _contacts) { if (c == bareJid) { found = true; break; } }
+            if (!found) _contacts.push_back(bareJid);
             xSemaphoreGive(_mutex);
+            appendMsgToSD(bareJid, _outBody, true);
+            if (!found) saveContactsToSD();
             _outPending = false;
         }
 
@@ -413,9 +534,16 @@ void XmppNonStaticApp::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
     _mutex = xSemaphoreCreateMutex();
     loadSettings();
+    ensureXmppDirs();
+    loadContactsFromSD();
     if (_server.length() > 0 && _jid.length() > 0 && _pass.length() > 0) {
-        _view = XV_STATUS;
-        startConn();
+        if (!_contacts.empty()) {
+            _view = XV_CONTACTS;
+            startConn();
+        } else {
+            _view = XV_STATUS;
+            startConn();
+        }
     } else {
         _view = XV_SETUP;
     }
@@ -451,6 +579,7 @@ void XmppNonStaticApp::CloseApp() {
     _setupField = 0;
     _selContact = 0;
     _lastChatCount = 0;
+    _outPending = false;
     _scroll.reset();
     if (_mutex) { vSemaphoreDelete(_mutex); _mutex = nullptr; }
 }
@@ -678,6 +807,9 @@ void XmppNonStaticApp::UpdateButtons(int button) {
                 _chatJid = _contacts[_selContact];
             xSemaphoreGive(_mutex);
             if (_chatJid.length() > 0) {
+                bool hasLocal = false;
+                for (auto& m : _msgs) { if (m.jid == _chatJid) { hasLocal = true; break; } }
+                if (!hasLocal) loadChatFromSD(_chatJid);
                 _view = XV_CHAT;
                 _scroll.reset();
                 _lastChatCount = 0;
@@ -690,8 +822,11 @@ void XmppNonStaticApp::UpdateButtons(int button) {
                     xSemaphoreTake(_mutex, portMAX_DELAY);
                     bool found = false;
                     for (auto& c : _contacts) { if (c == jid) { found = true; break; } }
-                    if (!found) _contacts.push_back(jid);
+                    if (!found) { _contacts.push_back(jid); saveContactsToSD(); }
                     xSemaphoreGive(_mutex);
+                    bool hasLocal = false;
+                    for (auto& m : _msgs) { if (m.jid == jid) { hasLocal = true; break; } }
+                    if (!hasLocal) loadChatFromSD(jid);
                     _view = XV_CHAT;
                     _scroll.reset();
                     _lastChatCount = 0;
@@ -762,6 +897,9 @@ void XmppNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
                 _selContact = tapped;
                 _chatJid = _contacts[tapped];
                 xSemaphoreGive(_mutex);
+                bool hasLocal = false;
+                for (auto& m : _msgs) { if (m.jid == _chatJid) { hasLocal = true; break; } }
+                if (!hasLocal) loadChatFromSD(_chatJid);
                 _view = XV_CHAT;
                 _scroll.reset();
                 _lastChatCount = 0;
