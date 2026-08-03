@@ -2,11 +2,13 @@
 #include "staticPrograms/mainMenu.h"
 #include "staticPrograms/appMenu.h"
 #include "System/SystemUI/Keyboard.h"
+#include "System/systemDrivers.h"
 #include "fonts/cyrillic_draw.h"
 #include <WiFi.h>
 #include <Preferences.h>
 #include <lwip/sockets.h>
 #include <errno.h>
+#include <sys/time.h>
 #include "mbedtls/base64.h"
 #include "mbedtls/error.h"
 
@@ -282,6 +284,16 @@ String XmppNonStaticApp::bare(const String& jid) {
     return (slash > 0) ? jid.substring(0, slash) : jid;
 }
 
+static time_t utcMktime(struct tm* t) {
+    t->tm_isdst = 0;
+    time_t local_epoch = mktime(t);
+    struct tm gm;
+    gmtime_r(&local_epoch, &gm);
+    gm.tm_isdst = 0;
+    time_t diff = mktime(&gm) - local_epoch;
+    return local_epoch - diff;
+}
+
 void XmppNonStaticApp::parseStanza(const String& s) {
     if (s.indexOf("<message") < 0) return;
     if (s.indexOf("<body>") < 0 && s.indexOf("encrypted") < 0 &&
@@ -355,26 +367,32 @@ void XmppNonStaticApp::parseStanza(const String& s) {
         }
     }
 
-    // Extract timestamp from MAM <delay stamp='2023-01-01T00:00:00Z'/>
     time_t msgTs = time(nullptr);
     int delayS = s.indexOf("stamp='");
     if (delayS < 0) delayS = s.indexOf("stamp=\"");
     if (delayS >= 0) {
         delayS += 7;
-        // Parse ISO 8601: YYYY-MM-DDTHH:MM:SSZ
         int Y, M, D, h, m, sec;
         if (sscanf(s.c_str() + delayS, "%d-%d-%dT%d:%d:%d", &Y, &M, &D, &h, &m, &sec) == 6) {
             struct tm t = {};
             t.tm_year = Y - 1900; t.tm_mon = M - 1; t.tm_mday = D;
             t.tm_hour = h; t.tm_min = m; t.tm_sec = sec;
-            msgTs = mktime(&t);
+            msgTs = utcMktime(&t);
         }
+    } else if (outgoing) {
+        // No delay stamp + outgoing = live echo of our sent message, skip
+        xSemaphoreTake(_mutex, portMAX_DELAY);
+        bool found = false;
+        for (auto& c : _contacts) { if (c == contactJid) { found = true; break; } }
+        if (!found) _contacts.push_back(contactJid);
+        xSemaphoreGive(_mutex);
+        if (!found) saveContactsToSD();
+        return;
     }
 
     Serial.printf("[XMPP] %s jid=%s ts=%ld body=%s\n", outgoing ? "OUT" : "IN",
                   contactJid.c_str(), (long)msgTs, body.c_str());
 
-    // Skip if we already have this message from SD
     if (msgTs > 0 && msgTs <= _lastMsgTs) {
         Serial.println("[XMPP] skip: already on SD");
         // Still ensure contact is tracked
@@ -512,7 +530,24 @@ void XmppNonStaticApp::connLoop() {
     netSend("<iq type='set' id='s1'><session xmlns='urn:ietf:params:xml:ns:xmpp-session'/></iq>");
     readUntil("</iq>", 10000);
 
-    // Send presence
+    // Sync system clock from RTC so time() returns real values
+    setenv("TZ", "EET-2EEST,M3.5.0/3,M10.5.0/4", 1);
+    tzset();
+    if (rtcAvailable && xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(200)) == pdTRUE) {
+        DateTime rtcNow = SystemDrivers::Get().GetRTC().now();
+        xSemaphoreGive(i2cMutex);
+        struct tm rt = {};
+        rt.tm_year = rtcNow.year() - 1900;
+        rt.tm_mon = rtcNow.month() - 1;
+        rt.tm_mday = rtcNow.day();
+        rt.tm_hour = rtcNow.hour();
+        rt.tm_min = rtcNow.minute();
+        rt.tm_sec = rtcNow.second();
+        rt.tm_isdst = -1;
+        struct timeval tv = { .tv_sec = mktime(&rt), .tv_usec = 0 };
+        settimeofday(&tv, NULL);
+    }
+
     netSend("<presence/>");
 
     // Request archived messages newer than our last stored (MAM XEP-0313)
@@ -654,6 +689,10 @@ void XmppNonStaticApp::Loop() {
         xSemaphoreTake(_mutex, portMAX_DELAY);
         int totalH = 0;
         int prevHM = -1;
+        int grpLines = 0;
+        bool grpOut = false;
+        int grpHM = -2;
+        bool inGroup = false;
         for (auto& m : _msgs) {
             if (m.jid != _chatJid) continue;
             int curHM = -1;
@@ -661,14 +700,23 @@ void XmppNonStaticApp::Loop() {
                 struct tm t; localtime_r(&m.ts, &t);
                 curHM = t.tm_hour * 60 + t.tm_min;
             }
-            if (curHM >= 0 && curHM != prevHM) totalH += 14;
-            prevHM = curHM;
+            bool newGrp = !inGroup || m.outgoing != grpOut || curHM != grpHM;
+            if (newGrp) {
+                if (inGroup) totalH += grpLines * 14 + 4;
+                if (curHM >= 0 && curHM != prevHM) totalH += 14;
+                prevHM = curHM;
+                grpOut = m.outgoing;
+                grpHM = curHM;
+                grpLines = 0;
+                inGroup = true;
+            }
             int chars = 0;
             const char* p = m.body.c_str();
             while (*p) { if (((uint8_t)*p & 0xC0) != 0x80) chars++; p++; }
             int maxC = hasCyrillic(m.body.c_str()) ? 20 : 27;
-            totalH += max(1, (chars + maxC - 1) / maxC) * 14 + 4;
+            grpLines += max(1, (chars + maxC - 1) / maxC);
         }
+        if (inGroup) totalH += grpLines * 14 + 4;
         xSemaphoreGive(_mutex);
         if (totalH != _lastChatCount) {
             _lastChatCount = totalH;
@@ -856,13 +904,26 @@ void XmppNonStaticApp::drawChat() {
 
     int curY = listTop - _scroll.scrollY;
     int prevHM = -1;
+    int n = (int)chat.size();
 
-    for (int i = 0; i < (int)chat.size(); i++) {
+    for (int i = 0; i < n; ) {
         int curHM = -1, curH = 0, curM = 0;
         if (chat[i].ts > 0) {
             struct tm t; localtime_r(&chat[i].ts, &t);
             curH = t.tm_hour; curM = t.tm_min;
             curHM = curH * 60 + curM;
+        }
+        bool out = chat[i].outgoing;
+
+        int end = i + 1;
+        while (end < n && chat[end].outgoing == out) {
+            int eHM = -1;
+            if (chat[end].ts > 0) {
+                struct tm t; localtime_r(&chat[end].ts, &t);
+                eHM = t.tm_hour * 60 + t.tm_min;
+            }
+            if (eHM != curHM) break;
+            end++;
         }
 
         if (curHM >= 0 && curHM != prevHM) {
@@ -878,17 +939,11 @@ void XmppNonStaticApp::drawChat() {
         }
         prevHM = curHM;
 
-        uint16_t bubbleBg = chat[i].outgoing ? 0x0B23 : 0x18C3;
-        int bubbleX = chat[i].outgoing ? (240 - maxBubbleW - 2) : 2;
-        int textX = bubbleX + 4;
-
-        String& body = chat[i].body;
-        bool cyr = hasCyrillic(body.c_str());
-        int maxC = cyr ? 20 : 27;
-
-        int nLines = 0;
-        {
-            const char* p = body.c_str();
+        int groupLines = 0;
+        for (int j = i; j < end; j++) {
+            const char* p = chat[j].body.c_str();
+            int maxC = hasCyrillic(p) ? 20 : 27;
+            int ml = 0;
             while (*p) {
                 int cnt = 0;
                 while (*p && cnt < maxC) {
@@ -899,35 +954,44 @@ void XmppNonStaticApp::drawChat() {
                     else p += 4;
                     cnt++;
                 }
-                nLines++;
+                ml++;
             }
-            if (nLines == 0) nLines = 1;
+            groupLines += max(1, ml);
         }
-        int bubbleH = nLines * lineH + 2;
+
+        uint16_t bubbleBg = out ? 0x0B23 : 0x18C3;
+        int bubbleX = out ? (240 - maxBubbleW - 2) : 2;
+        int textX = bubbleX + 4;
+        int bubbleH = groupLines * lineH + 2;
 
         if (curY + bubbleH >= listTop && curY <= SCREEN_HEIGHT - bottomBar)
             screenBuff->fillRoundRect(bubbleX, curY, maxBubbleW, bubbleH, 4, bubbleBg);
 
-        const char* p = body.c_str();
         int ly = curY + 1;
-        while (*p) {
-            const char* ls = p;
-            int cnt = 0;
-            while (*p && cnt < maxC) {
-                uint8_t b = (uint8_t)*p;
-                if (b < 0x80) p++;
-                else if ((b & 0xE0) == 0xC0) p += 2;
-                else if ((b & 0xF0) == 0xE0) p += 3;
-                else p += 4;
-                cnt++;
+        for (int j = i; j < end; j++) {
+            String& body = chat[j].body;
+            int maxC = hasCyrillic(body.c_str()) ? 20 : 27;
+            const char* p = body.c_str();
+            while (*p) {
+                const char* ls = p;
+                int cnt = 0;
+                while (*p && cnt < maxC) {
+                    uint8_t b = (uint8_t)*p;
+                    if (b < 0x80) p++;
+                    else if ((b & 0xE0) == 0xC0) p += 2;
+                    else if ((b & 0xF0) == 0xE0) p += 3;
+                    else p += 4;
+                    cnt++;
+                }
+                if (ly + lineH >= listTop && ly <= SCREEN_HEIGHT - bottomBar) {
+                    String seg = body.substring(ls - body.c_str(), p - body.c_str());
+                    drawStringAuto(*screenBuff, seg.c_str(), textX, ly, TFT_WHITE);
+                }
+                ly += lineH;
             }
-            if (ly + lineH >= listTop && ly <= SCREEN_HEIGHT - bottomBar) {
-                String seg = body.substring(ls - body.c_str(), p - body.c_str());
-                drawStringAuto(*screenBuff, seg.c_str(), textX, ly, TFT_WHITE);
-            }
-            ly += lineH;
         }
         curY += bubbleH + 2;
+        i = end;
     }
 
     screenBuff->fillRect(0, SCREEN_HEIGHT - bottomBar, 240, bottomBar, 0x0841);
