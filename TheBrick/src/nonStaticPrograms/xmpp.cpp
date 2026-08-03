@@ -99,32 +99,36 @@ void XmppNonStaticApp::loadChatFromSD(const String& jid) {
     String path = "/system/xmpp/" + sanitizeJid(jid) + ".txt";
     File f = SD_MMC.open(path, FILE_READ);
     if (!f) return;
-    int linesRead = 0, added = 0;
     while (f.available()) {
         String line = f.readStringUntil('\n');
         if (line.length() < 2) continue;
         bool out = (line[0] == '>');
-        String body = line.substring(1);
-        body.trim();
-        if (body.length() == 0) continue;
-        linesRead++;
-        bool dup = false;
-        for (int i = _msgs.size() - 1; i >= 0; i--) {
-            if (_msgs[i].jid == jid && _msgs[i].body == body && _msgs[i].outgoing == out) {
-                dup = true; break;
-            }
+        String rest = line.substring(1);
+        rest.trim();
+        time_t ts = 0;
+        String body;
+        int pipe = rest.indexOf('|');
+        if (pipe > 0) {
+            ts = (time_t)rest.substring(0, pipe).toInt();
+            body = rest.substring(pipe + 1);
+        } else {
+            body = rest;
         }
-        if (!dup) { _msgs.push_back({jid, body, out}); added++; }
+        if (body.length() == 0) continue;
+        _msgs.push_back({jid, body, out, ts});
+        if (ts > _lastMsgTs) _lastMsgTs = ts;
     }
     f.close();
 }
 
-void XmppNonStaticApp::appendMsgToSD(const String& jid, const String& body, bool outgoing) {
+void XmppNonStaticApp::appendMsgToSD(const String& jid, const String& body, bool outgoing, time_t ts) {
     ensureXmppDirs();
     String path = "/system/xmpp/" + sanitizeJid(jid) + ".txt";
     File f = SD_MMC.open(path, FILE_APPEND);
     if (!f) return;
     f.print(outgoing ? ">" : "<");
+    f.print((long)ts);
+    f.print('|');
     f.println(body);
     f.close();
 }
@@ -351,26 +355,48 @@ void XmppNonStaticApp::parseStanza(const String& s) {
         }
     }
 
-    Serial.printf("[XMPP] %s jid=%s body=%s\n", outgoing ? "OUT" : "IN", contactJid.c_str(), body.c_str());
-
-    xSemaphoreTake(_mutex, portMAX_DELAY);
-    bool dup = false;
-    for (int i = _msgs.size() - 1; i >= 0; i--) {
-        if (_msgs[i].jid != contactJid) continue;
-        if (_msgs[i].body == body && _msgs[i].outgoing == outgoing) {
-            dup = true; break;
+    // Extract timestamp from MAM <delay stamp='2023-01-01T00:00:00Z'/>
+    time_t msgTs = time(nullptr);
+    int delayS = s.indexOf("stamp='");
+    if (delayS < 0) delayS = s.indexOf("stamp=\"");
+    if (delayS >= 0) {
+        delayS += 7;
+        // Parse ISO 8601: YYYY-MM-DDTHH:MM:SSZ
+        int Y, M, D, h, m, sec;
+        if (sscanf(s.c_str() + delayS, "%d-%d-%dT%d:%d:%d", &Y, &M, &D, &h, &m, &sec) == 6) {
+            struct tm t = {};
+            t.tm_year = Y - 1900; t.tm_mon = M - 1; t.tm_mday = D;
+            t.tm_hour = h; t.tm_min = m; t.tm_sec = sec;
+            msgTs = mktime(&t);
         }
     }
-    if (!dup) {
-        _msgs.push_back({contactJid, body, outgoing});
-        if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
+
+    Serial.printf("[XMPP] %s jid=%s ts=%ld body=%s\n", outgoing ? "OUT" : "IN",
+                  contactJid.c_str(), (long)msgTs, body.c_str());
+
+    // Skip if we already have this message from SD
+    if (msgTs > 0 && msgTs <= _lastMsgTs) {
+        Serial.println("[XMPP] skip: already on SD");
+        // Still ensure contact is tracked
+        xSemaphoreTake(_mutex, portMAX_DELAY);
+        bool found = false;
+        for (auto& c : _contacts) { if (c == contactJid) { found = true; break; } }
+        if (!found) _contacts.push_back(contactJid);
+        xSemaphoreGive(_mutex);
+        if (!found) saveContactsToSD();
+        return;
     }
+
+    xSemaphoreTake(_mutex, portMAX_DELAY);
+    _msgs.push_back({contactJid, body, outgoing, msgTs});
+    if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
+    if (msgTs > _lastMsgTs) _lastMsgTs = msgTs;
     bool found = false;
     for (auto& c : _contacts) { if (c == contactJid) { found = true; break; } }
     if (!found) _contacts.push_back(contactJid);
     xSemaphoreGive(_mutex);
 
-    if (!dup) appendMsgToSD(contactJid, body, outgoing);
+    appendMsgToSD(contactJid, body, outgoing, msgTs);
     if (!found) saveContactsToSD();
 }
 
@@ -489,10 +515,24 @@ void XmppNonStaticApp::connLoop() {
     // Send presence
     netSend("<presence/>");
 
-    // Request offline/archived messages (MAM XEP-0313)
-    netSend("<iq type='set' id='mam1'><query xmlns='urn:xmpp:mam:2'>"
-            "<set xmlns='http://jabber.org/protocol/rsm'><max>50</max></set>"
-            "</query></iq>");
+    // Request archived messages newer than our last stored (MAM XEP-0313)
+    if (_lastMsgTs > 0) {
+        struct tm* t = gmtime(&_lastMsgTs);
+        char startBuf[32];
+        strftime(startBuf, sizeof(startBuf), "%Y-%m-%dT%H:%M:%SZ", t);
+        String mamQ = "<iq type='set' id='mam1'><query xmlns='urn:xmpp:mam:2'>"
+                      "<x xmlns='jabber:x:data' type='submit'>"
+                      "<field var='FORM_TYPE' type='hidden'><value>urn:xmpp:mam:2</value></field>"
+                      "<field var='start'><value>" + String(startBuf) + "</value></field>"
+                      "</x>"
+                      "<set xmlns='http://jabber.org/protocol/rsm'><max>50</max></set>"
+                      "</query></iq>";
+        netSend(mamQ);
+    } else {
+        netSend("<iq type='set' id='mam1'><query xmlns='urn:xmpp:mam:2'>"
+                "<set xmlns='http://jabber.org/protocol/rsm'><max>50</max></set>"
+                "</query></iq>");
+    }
 
     _progress = 7;
 
@@ -538,14 +578,16 @@ void XmppNonStaticApp::connLoop() {
                          String(millis()) + "'><body>" + xmlEnc(_outBody) + "</body></message>";
             netSend(msg);
             String bareJid = bare(_outTo);
+            time_t now = time(nullptr);
             xSemaphoreTake(_mutex, portMAX_DELAY);
-            _msgs.push_back({bareJid, _outBody, true});
+            _msgs.push_back({bareJid, _outBody, true, now});
             if (_msgs.size() > 200) _msgs.erase(_msgs.begin());
+            if (now > _lastMsgTs) _lastMsgTs = now;
             bool found = false;
             for (auto& c : _contacts) { if (c == bareJid) { found = true; break; } }
             if (!found) _contacts.push_back(bareJid);
             xSemaphoreGive(_mutex);
-            appendMsgToSD(bareJid, _outBody, true);
+            appendMsgToSD(bareJid, _outBody, true, now);
             if (!found) saveContactsToSD();
             _outPending = false;
         }
@@ -610,19 +652,26 @@ void XmppNonStaticApp::Loop() {
 
     if (_view == XV_CHAT) {
         xSemaphoreTake(_mutex, portMAX_DELAY);
-        int totalLines = 0;
+        int totalH = 0;
+        int prevHM = -1;
         for (auto& m : _msgs) {
             if (m.jid != _chatJid) continue;
-            int chars = 2;
+            int curHM = -1;
+            if (m.ts > 0) {
+                struct tm t; localtime_r(&m.ts, &t);
+                curHM = t.tm_hour * 60 + t.tm_min;
+            }
+            if (curHM >= 0 && curHM != prevHM) totalH += 14;
+            prevHM = curHM;
+            int chars = 0;
             const char* p = m.body.c_str();
             while (*p) { if (((uint8_t)*p & 0xC0) != 0x80) chars++; p++; }
-            int maxC = hasCyrillic(m.body.c_str()) ? 28 : 38;
-            totalLines += max(1, (chars + maxC - 1) / maxC);
+            int maxC = hasCyrillic(m.body.c_str()) ? 20 : 27;
+            totalH += max(1, (chars + maxC - 1) / maxC) * 14 + 4;
         }
         xSemaphoreGive(_mutex);
-        if (totalLines != _lastChatCount) {
-            _lastChatCount = totalLines;
-            int totalH = totalLines * 14;
+        if (totalH != _lastChatCount) {
+            _lastChatCount = totalH;
             int viewH = SCREEN_HEIGHT - 60;
             if (totalH > viewH) _scroll.scrollY = totalH - viewH;
         }
@@ -641,6 +690,7 @@ void XmppNonStaticApp::CloseApp() {
     _setupField = 0;
     _selContact = 0;
     _lastChatCount = 0;
+    _lastMsgTs = 0;
     _outPending = false;
     _scroll.reset();
     if (_mutex) { vSemaphoreDelete(_mutex); _mutex = nullptr; }
@@ -795,6 +845,8 @@ void XmppNonStaticApp::drawChat() {
 
     int listTop = 40;
     int bottomBar = 20;
+    int lineH = 14;
+    int maxBubbleW = 180;
 
     xSemaphoreTake(_mutex, portMAX_DELAY);
     std::vector<XmppMsg> chat;
@@ -802,16 +854,62 @@ void XmppNonStaticApp::drawChat() {
         if (m.jid == _chatJid) chat.push_back(m);
     xSemaphoreGive(_mutex);
 
-    int lineH = 14;
     int curY = listTop - _scroll.scrollY;
+    int prevHM = -1;
 
     for (int i = 0; i < (int)chat.size(); i++) {
-        uint16_t msgColor = chat[i].outgoing ? TFT_GREEN : TFT_WHITE;
-        String full = (chat[i].outgoing ? "> " : "< ") + chat[i].body;
-        bool cyr = hasCyrillic(full.c_str());
-        int maxC = cyr ? 28 : 38;
+        int curHM = -1, curH = 0, curM = 0;
+        if (chat[i].ts > 0) {
+            struct tm t; localtime_r(&chat[i].ts, &t);
+            curH = t.tm_hour; curM = t.tm_min;
+            curHM = curH * 60 + curM;
+        }
 
-        const char* p = full.c_str();
+        if (curHM >= 0 && curHM != prevHM) {
+            if (curY + lineH >= listTop && curY <= SCREEN_HEIGHT - bottomBar) {
+                char tb[6];
+                snprintf(tb, sizeof(tb), "%02d:%02d", curH, curM);
+                screenBuff->setTextColor(0x4208);
+                screenBuff->setTextDatum(MC_DATUM);
+                screenBuff->drawString(tb, 120, curY + 3);
+                screenBuff->setTextDatum(TL_DATUM);
+            }
+            curY += lineH;
+        }
+        prevHM = curHM;
+
+        uint16_t bubbleBg = chat[i].outgoing ? 0x0B23 : 0x18C3;
+        int bubbleX = chat[i].outgoing ? (240 - maxBubbleW - 2) : 2;
+        int textX = bubbleX + 4;
+
+        String& body = chat[i].body;
+        bool cyr = hasCyrillic(body.c_str());
+        int maxC = cyr ? 20 : 27;
+
+        int nLines = 0;
+        {
+            const char* p = body.c_str();
+            while (*p) {
+                int cnt = 0;
+                while (*p && cnt < maxC) {
+                    uint8_t b = (uint8_t)*p;
+                    if (b < 0x80) p++;
+                    else if ((b & 0xE0) == 0xC0) p += 2;
+                    else if ((b & 0xF0) == 0xE0) p += 3;
+                    else p += 4;
+                    cnt++;
+                }
+                nLines++;
+            }
+            if (nLines == 0) nLines = 1;
+        }
+        int bubbleH = nLines * lineH + 2;
+
+        if (curY + bubbleH >= listTop && curY <= SCREEN_HEIGHT - bottomBar)
+            screenBuff->fillRoundRect(bubbleX, curY, maxBubbleW, bubbleH, 4, bubbleBg);
+
+        const char* p = body.c_str();
+        int ly = curY + 1;
         while (*p) {
             const char* ls = p;
             int cnt = 0;
@@ -823,13 +921,13 @@ void XmppNonStaticApp::drawChat() {
                 else p += 4;
                 cnt++;
             }
-            if (curY + lineH >= listTop && curY <= SCREEN_HEIGHT - bottomBar) {
-                String seg = full.substring(ls - full.c_str(), p - full.c_str());
-                drawStringAuto(*screenBuff, seg.c_str(), 4, curY, msgColor);
+            if (ly + lineH >= listTop && ly <= SCREEN_HEIGHT - bottomBar) {
+                String seg = body.substring(ls - body.c_str(), p - body.c_str());
+                drawStringAuto(*screenBuff, seg.c_str(), textX, ly, TFT_WHITE);
             }
-            curY += lineH;
+            ly += lineH;
         }
-        if (full.length() == 0) curY += lineH;
+        curY += bubbleH + 2;
     }
 
     screenBuff->fillRect(0, SCREEN_HEIGHT - bottomBar, 240, bottomBar, 0x0841);

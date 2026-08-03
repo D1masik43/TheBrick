@@ -15,6 +15,7 @@ struct XmppMsg {
     String jid;
     String body;
     bool outgoing;
+    time_t ts;
 };
 
 enum XmppView { XV_SETUP, XV_STATUS, XV_CONTACTS, XV_CHAT };
@@ -53,6 +54,7 @@ private:
     std::vector<String> _contacts;
     String _chatJid;
     int _lastChatCount = 0;
+    time_t _lastMsgTs = 0;
 
     String _outTo, _outBody;
     volatile bool _outPending = false;
@@ -82,7 +84,7 @@ private:
     void drawChat();
 
     void loadChatFromSD(const String& jid);
-    void appendMsgToSD(const String& jid, const String& body, bool outgoing);
+    void appendMsgToSD(const String& jid, const String& body, bool outgoing, time_t ts);
     void saveContactsToSD();
     void loadContactsFromSD();
     void ensureXmppDirs();
