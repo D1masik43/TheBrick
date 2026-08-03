@@ -4,6 +4,7 @@
 #include "System/SystemUI/Scrollable.h"
 #include "System/SystemUI/Keyboard.h"
 #include <WiFi.h>
+#include <SD_MMC.h>
 #include <vector>
 
 class MainMenu;
@@ -12,15 +13,16 @@ class AppMenu;
 struct WifiNetwork {
     String ssid;
     int rssi;
-    int encryption; // WIFI_AUTH_OPEN, etc.
+    int encryption;
 };
 
 enum WifiView {
-    WIFI_SCANNING,
-    WIFI_LIST,
-    WIFI_CONNECTING,
-    WIFI_CONNECTED,
-    WIFI_FAILED
+    WV_OFF,
+    WV_SCANNING,
+    WV_LIST,
+    WV_CONNECTING,
+    WV_CONNECTED,
+    WV_FAILED
 };
 
 class WifiSettingsApp : public NonStaticApp {
@@ -42,13 +44,19 @@ private:
     std::vector<WifiNetwork> networks;
     int selectedIdx = 0;
     Scrollable scroll;
-    WifiView view = WIFI_SCANNING;
+    WifiView view = WV_OFF;
 
     String connectSSID;
     unsigned long connectStart = 0;
 
+    void wifiOn();
+    void wifiOff();
     void scanNetworks();
     void selectNetwork(int idx);
+    String loadPassword(const String& ssid);
+    void savePassword(const String& ssid, const String& pass);
+
+    void drawOff();
     void drawScanning();
     void drawList();
     void drawConnecting();

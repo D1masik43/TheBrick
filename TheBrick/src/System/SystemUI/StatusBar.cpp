@@ -78,6 +78,18 @@ void StatusBar::statusTask(void* param) {
         response = sim800CmdLocked(sim800, "AT+CREG?");
         self->cachedRegistered = (response.indexOf(",1") != -1 || response.indexOf(",5") != -1);
 
+        self->cachedWifiOn = (WiFi.getMode() != WIFI_OFF);
+        if (self->cachedWifiOn && WiFi.status() == WL_CONNECTED) {
+            int wr = WiFi.RSSI();
+            if (wr > -50) self->cachedWifiBars = 4;
+            else if (wr > -60) self->cachedWifiBars = 3;
+            else if (wr > -70) self->cachedWifiBars = 2;
+            else if (wr > -80) self->cachedWifiBars = 1;
+            else self->cachedWifiBars = 0;
+        } else {
+            self->cachedWifiBars = 0;
+        }
+
         if (self->cachedRegistered && pollDelay < 1000) pollDelay = 1000;
 
         vTaskDelay(pdMS_TO_TICKS(pollDelay));
@@ -110,6 +122,7 @@ void StatusBar::Draw(TFT_eSprite& screenBuff, bool inMenu, uint16_t bg_color) {
     screenBuff.setTextColor(TFT_WHITE);
 
     // Signal bars / SIM800 registration
+    int gsmRight;
     if (cachedRegistered) {
         int barWidth = 3, barSpacing = 2, baseX = battX - (barWidth + barSpacing) * 4 - 8;
         for (int i = 0; i < 4; i++) {
@@ -117,12 +130,25 @@ void StatusBar::Draw(TFT_eSprite& screenBuff, bool inMenu, uint16_t bg_color) {
             uint16_t color = (i < cachedBars) ? TFT_WHITE : TFT_DARKGREY;
             screenBuff.fillRect(baseX + i * (barWidth + barSpacing), 16 - h, barWidth, h, color);
         }
+        gsmRight = baseX;
     } else {
-        // Draw red cross if not registered
         int size = 8;
         int x = battX - size - 4;
         int y = 4;
         screenBuff.drawLine(x, y, x + size, y + size, TFT_RED);
         screenBuff.drawLine(x + size, y, x, y + size, TFT_RED);
+        gsmRight = x;
+    }
+
+    // WiFi signal bars
+    if (cachedWifiOn) {
+        int barWidth = 3, barSpacing = 2;
+        int wifiBaseX = gsmRight - (barWidth + barSpacing) * 4 - 4;
+        uint16_t arcColor = (cachedWifiBars > 0) ? TFT_CYAN : TFT_DARKGREY;
+        for (int i = 0; i < 4; i++) {
+            int h = (i + 1) * 3;
+            uint16_t color = (i < cachedWifiBars) ? arcColor : TFT_DARKGREY;
+            screenBuff.fillRect(wifiBaseX + i * (barWidth + barSpacing), 16 - h, barWidth, h, color);
+        }
     }
 }

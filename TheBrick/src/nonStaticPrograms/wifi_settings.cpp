@@ -3,18 +3,69 @@
 #include "staticPrograms/appMenu.h"
 
 static const uint16_t wifi_icon[256] = {0};
+static const char* WIFI_DIR = "/system/wifi";
 
 WifiSettingsApp::WifiSettingsApp(const std::string& name)
     : NonStaticApp(name) {}
 
 void WifiSettingsApp::Setup() {
     screenBuff = &SystemDrivers::Get().GetScreenBuff();
-    view = WIFI_SCANNING;
-    if (WiFi.status() != WL_CONNECTED)
-        WiFi.mode(WIFI_STA);
-    else
+    SD_MMC.mkdir("/system");
+    SD_MMC.mkdir(WIFI_DIR);
+    if (WiFi.status() == WL_CONNECTED) {
         connectSSID = WiFi.SSID();
+        view = WV_CONNECTED;
+    } else {
+        view = WV_OFF;
+    }
 }
+
+// ========== SD password storage ==========
+
+static String sanitize(const String& ssid) {
+    String s;
+    for (unsigned int i = 0; i < ssid.length(); i++) {
+        char c = ssid[i];
+        if (isalnum(c) || c == '-' || c == '_') s += c;
+        else s += '_';
+    }
+    return s;
+}
+
+String WifiSettingsApp::loadPassword(const String& ssid) {
+    String path = String(WIFI_DIR) + "/" + sanitize(ssid) + ".txt";
+    File f = SD_MMC.open(path, FILE_READ);
+    if (!f) return "";
+    String pass = f.readString();
+    f.close();
+    pass.trim();
+    return pass;
+}
+
+void WifiSettingsApp::savePassword(const String& ssid, const String& pass) {
+    String path = String(WIFI_DIR) + "/" + sanitize(ssid) + ".txt";
+    File f = SD_MMC.open(path, FILE_WRITE);
+    if (f) { f.print(pass); f.close(); }
+}
+
+// ========== WiFi on/off ==========
+
+void WifiSettingsApp::wifiOn() {
+    WiFi.mode(WIFI_STA);
+    view = WV_SCANNING;
+}
+
+void WifiSettingsApp::wifiOff() {
+    WiFi.disconnect(true);
+    WiFi.mode(WIFI_OFF);
+    networks.clear();
+    connectSSID = "";
+    scroll.reset();
+    selectedIdx = 0;
+    view = WV_OFF;
+}
+
+// ========== Scan ==========
 
 void WifiSettingsApp::scanNetworks() {
     networks.clear();
@@ -35,36 +86,89 @@ void WifiSettingsApp::scanNetworks() {
         if (!dup) networks.push_back(net);
     }
     WiFi.scanDelete();
-    view = WIFI_LIST;
+    view = WV_LIST;
 }
 
+// ========== Connect ==========
+
+void WifiSettingsApp::selectNetwork(int idx) {
+    if (idx < 0 || idx >= (int)networks.size()) return;
+
+    if (WiFi.status() == WL_CONNECTED && networks[idx].ssid == WiFi.SSID()) {
+        WiFi.disconnect();
+        connectSSID = "";
+        return;
+    }
+
+    if (networks[idx].encryption == WIFI_AUTH_OPEN) {
+        connectSSID = networks[idx].ssid;
+        WiFi.begin(connectSSID.c_str());
+        connectStart = millis();
+        view = WV_CONNECTING;
+        return;
+    }
+
+    String saved = loadPassword(networks[idx].ssid);
+    if (saved.length() > 0) {
+        connectSSID = networks[idx].ssid;
+        WiFi.begin(connectSSID.c_str(), saved.c_str());
+        connectStart = millis();
+        view = WV_CONNECTING;
+    } else {
+        String ssid = networks[idx].ssid;
+        Keyboard::Get().Open("Password", [this, ssid](const String& pwd) {
+            connectSSID = ssid;
+            savePassword(ssid, pwd);
+            WiFi.begin(connectSSID.c_str(), pwd.c_str());
+            connectStart = millis();
+            view = WV_CONNECTING;
+        });
+    }
+}
+
+// ========== Loop ==========
+
 void WifiSettingsApp::Loop() {
-    if (view == WIFI_SCANNING) {
+    if (view == WV_SCANNING) {
         Draw();
         screenBuff->pushSprite(0, 0);
         scanNetworks();
         return;
     }
-    if (view == WIFI_CONNECTING) {
+    if (view == WV_CONNECTING) {
         if (WiFi.status() == WL_CONNECTED) {
-            view = WIFI_CONNECTED;
+            view = WV_CONNECTED;
         } else if (millis() - connectStart > 15000) {
             WiFi.disconnect();
-            view = WIFI_FAILED;
+            view = WV_FAILED;
         }
     }
     Draw();
 }
 
+// ========== Drawing ==========
+
 void WifiSettingsApp::Draw() {
     screenBuff->fillScreen(TFT_BLACK);
     switch (view) {
-        case WIFI_SCANNING:   drawScanning(); break;
-        case WIFI_LIST:       drawList(); break;
-        case WIFI_CONNECTING: drawConnecting(); break;
-        case WIFI_CONNECTED:  drawConnected(); break;
-        case WIFI_FAILED:     drawFailed(); break;
+        case WV_OFF:        drawOff(); break;
+        case WV_SCANNING:   drawScanning(); break;
+        case WV_LIST:       drawList(); break;
+        case WV_CONNECTING: drawConnecting(); break;
+        case WV_CONNECTED:  drawConnected(); break;
+        case WV_FAILED:     drawFailed(); break;
     }
+}
+
+void WifiSettingsApp::drawOff() {
+    screenBuff->setTextSize(1);
+    screenBuff->setTextDatum(MC_DATUM);
+    screenBuff->setTextColor(TFT_DARKGREY);
+    screenBuff->drawString("WiFi is OFF", 120, 130);
+    screenBuff->fillRoundRect(80, 160, 80, 34, 6, 0x0320);
+    screenBuff->setTextColor(TFT_WHITE);
+    screenBuff->drawString("Turn ON", 120, 177);
+    screenBuff->setTextDatum(TL_DATUM);
 }
 
 void WifiSettingsApp::drawScanning() {
@@ -88,6 +192,13 @@ void WifiSettingsApp::drawList() {
         screenBuff->drawString(info.c_str(), 8, 38);
     }
 
+    // Turn OFF button top-right
+    screenBuff->fillRoundRect(192, 24, 44, 16, 3, TFT_RED);
+    screenBuff->setTextColor(TFT_WHITE);
+    screenBuff->setTextDatum(MC_DATUM);
+    screenBuff->drawString("OFF", 214, 32);
+    screenBuff->setTextDatum(TL_DATUM);
+
     int listTop = 52;
 
     if (networks.empty()) {
@@ -105,22 +216,29 @@ void WifiSettingsApp::drawList() {
         if (y + ITEM_H < listTop) continue;
         if (y > SCREEN_HEIGHT) break;
 
-        bool isConnected = connected && networks[i].ssid == curSSID;
+        bool isConn = connected && networks[i].ssid == curSSID;
 
-        if (isConnected)
+        if (isConn)
             screenBuff->fillRect(0, y, 240, ITEM_H - 2, 0x0320);
         else if (i == selectedIdx)
             screenBuff->fillRect(0, y, 240, ITEM_H - 2, 0x1082);
 
         drawSignalIcon(6, y + 8, networks[i].rssi);
 
-        screenBuff->setTextColor(isConnected ? TFT_WHITE : TFT_WHITE);
+        screenBuff->setTextColor(TFT_WHITE);
         String display = networks[i].ssid;
         if (display.length() > 22) display = display.substring(0, 22);
         screenBuff->drawString(display.c_str(), 24, y + 6);
 
         screenBuff->setTextColor(TFT_DARKGREY);
-        String sub = isConnected ? "Connected - tap to disconnect" : String(authStr(networks[i].encryption));
+        String sub;
+        if (isConn)
+            sub = "Connected - tap to disconnect";
+        else {
+            sub = authStr(networks[i].encryption);
+            if (networks[i].encryption != WIFI_AUTH_OPEN && loadPassword(networks[i].ssid).length() > 0)
+                sub += " (saved)";
+        }
         screenBuff->drawString(sub.c_str(), 24, y + 18);
 
         screenBuff->drawLine(0, y + ITEM_H - 2, 240, y + ITEM_H - 2, 0x2104);
@@ -134,7 +252,6 @@ void WifiSettingsApp::drawConnecting() {
     screenBuff->drawString("Connecting to", 120, 140);
     screenBuff->setTextColor(TFT_CYAN);
     screenBuff->drawString(connectSSID.c_str(), 120, 156);
-
     int elapsed = (millis() - connectStart) / 1000;
     char buf[16];
     snprintf(buf, sizeof(buf), "%ds / 15s", elapsed);
@@ -146,16 +263,12 @@ void WifiSettingsApp::drawConnecting() {
 void WifiSettingsApp::drawConnected() {
     screenBuff->setTextSize(1);
     screenBuff->setTextDatum(MC_DATUM);
-
     screenBuff->setTextColor(TFT_GREEN);
     screenBuff->drawString("Connected!", 120, 120);
-
     screenBuff->setTextColor(TFT_WHITE);
     screenBuff->drawString(connectSSID.c_str(), 120, 140);
-
     screenBuff->setTextColor(TFT_CYAN);
     screenBuff->drawString(WiFi.localIP().toString().c_str(), 120, 160);
-
     screenBuff->setTextColor(TFT_DARKGREY);
     screenBuff->drawString("[BACK] Return", 120, 200);
     screenBuff->setTextDatum(TL_DATUM);
@@ -164,13 +277,10 @@ void WifiSettingsApp::drawConnected() {
 void WifiSettingsApp::drawFailed() {
     screenBuff->setTextSize(1);
     screenBuff->setTextDatum(MC_DATUM);
-
     screenBuff->setTextColor(TFT_RED);
     screenBuff->drawString("Connection failed", 120, 140);
-
     screenBuff->setTextColor(TFT_WHITE);
     screenBuff->drawString(connectSSID.c_str(), 120, 156);
-
     screenBuff->setTextColor(TFT_DARKGREY);
     screenBuff->drawString("[KEY1] Retry  [BACK] Back", 120, 190);
     screenBuff->setTextDatum(TL_DATUM);
@@ -182,7 +292,6 @@ void WifiSettingsApp::drawSignalIcon(int x, int y, int rssi) {
     else if (rssi > -60) bars = 3;
     else if (rssi > -70) bars = 2;
     else if (rssi > -80) bars = 1;
-
     for (int i = 0; i < 4; i++) {
         int bh = 4 + i * 4;
         int by = y + 16 - bh;
@@ -202,39 +311,16 @@ const char* WifiSettingsApp::authStr(int auth) {
     }
 }
 
-void WifiSettingsApp::selectNetwork(int idx) {
-    if (idx < 0 || idx >= (int)networks.size()) return;
-
-    if (WiFi.status() == WL_CONNECTED && networks[idx].ssid == WiFi.SSID()) {
-        WiFi.disconnect();
-        connectSSID = "";
-        return;
-    }
-
-    if (networks[idx].encryption == WIFI_AUTH_OPEN) {
-        connectSSID = networks[idx].ssid;
-        WiFi.begin(connectSSID.c_str());
-        connectStart = millis();
-        view = WIFI_CONNECTING;
-    } else {
-        String ssid = networks[idx].ssid;
-        Keyboard::Get().Open("Password", [this, ssid](const String& pwd) {
-            connectSSID = ssid;
-            WiFi.begin(connectSSID.c_str(), pwd.c_str());
-            connectStart = millis();
-            view = WIFI_CONNECTING;
-        });
-    }
-}
+// ========== Input ==========
 
 void WifiSettingsApp::UpdateButtons(int button) {
-    if (view == WIFI_SCANNING || view == WIFI_CONNECTING) return;
+    if (view == WV_SCANNING || view == WV_CONNECTING) return;
 
     if (button == BUTTON_BACK) {
-        if (view == WIFI_LIST) {
+        if (view == WV_LIST || view == WV_OFF)
             SystemCommon::Get().SetNextApp(&MainMenu::Get());
-        } else {
-            view = WIFI_LIST;
+        else {
+            view = WV_LIST;
             scroll.reset();
         }
         return;
@@ -244,7 +330,12 @@ void WifiSettingsApp::UpdateButtons(int button) {
         return;
     }
 
-    if (view == WIFI_LIST) {
+    if (view == WV_OFF) {
+        if (button == BUTTON_IN) wifiOn();
+        return;
+    }
+
+    if (view == WV_LIST) {
         if (button == BUTTON_UP && selectedIdx > 0) {
             selectedIdx--;
             int topY = selectedIdx * ITEM_H - scroll.scrollY;
@@ -256,23 +347,33 @@ void WifiSettingsApp::UpdateButtons(int button) {
             if (botY > SCREEN_HEIGHT - 52)
                 scroll.scrollY = selectedIdx * ITEM_H + ITEM_H - (SCREEN_HEIGHT - 52);
         }
-        if (button == BUTTON_IN && !networks.empty()) {
+        if (button == BUTTON_IN && !networks.empty())
             selectNetwork(selectedIdx);
-        }
-        if (button == BUTTON_KEY1) {
-            view = WIFI_SCANNING;
-        }
+        if (button == BUTTON_KEY1)
+            view = WV_SCANNING;
+        if (button == BUTTON_KEY2)
+            wifiOff();
     }
-    if (view == WIFI_FAILED && button == BUTTON_KEY1) {
-        view = WIFI_SCANNING;
-    }
+    if (view == WV_FAILED && button == BUTTON_KEY1)
+        view = WV_SCANNING;
 }
 
 void WifiSettingsApp::UpdateTouch(const TouchPoint* touches, int count) {
     if (count <= 0) return;
     const TouchPoint& tp = touches[0];
 
-    if (view == WIFI_LIST) {
+    if (view == WV_OFF && tp.type == TAP) {
+        if (tp.x >= 80 && tp.x < 160 && tp.y >= 160 && tp.y < 194)
+            wifiOn();
+        return;
+    }
+
+    if (view == WV_LIST) {
+        // OFF button
+        if (tp.type == TAP && tp.x >= 192 && tp.y >= 24 && tp.y < 40) {
+            wifiOff();
+            return;
+        }
         scroll.setContent((int)networks.size() * ITEM_H, SCREEN_HEIGHT - 52);
         if (!scroll.handleTouch(tp) && tp.type == TAP) {
             int tapped = (tp.y - 52 + scroll.scrollY) / ITEM_H;
@@ -286,7 +387,7 @@ void WifiSettingsApp::UpdateTouch(const TouchPoint* touches, int count) {
 
 void WifiSettingsApp::CloseApp() {
     networks.clear();
-    view = WIFI_SCANNING;
+    view = WV_OFF;
     scroll.reset();
     selectedIdx = 0;
 }

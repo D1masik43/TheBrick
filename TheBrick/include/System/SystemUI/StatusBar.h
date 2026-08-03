@@ -1,6 +1,7 @@
 #pragma once
 #include <TFT_eSPI.h>
 #include <RTClib.h>
+#include <WiFi.h>
 
 class StatusBar {
 public:
@@ -21,6 +22,8 @@ private:
     bool cachedCharging = false;
     int cachedBars = 0;
     bool cachedRegistered = false;
+    int cachedWifiBars = 0;
+    bool cachedWifiOn = false;
 
     // internal
     void statusTask(void* param);
