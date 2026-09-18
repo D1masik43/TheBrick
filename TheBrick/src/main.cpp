@@ -6,6 +6,7 @@
 #include "System/systemCommon.h"
 #include "System/SystemUI/QuickSettings.h"
 #include "System/SystemUI/Keyboard.h"
+#include "System/usbCommand.h"
 
 TFT_eSprite *screenBuff;
 
@@ -64,21 +65,7 @@ void setup() {
 }
 
 void loop() {
-    if (Serial.available() > 0) {
-    Serial.println("Pong");
-    String input = Serial.readStringUntil('\n');
-    int y, m, d, hh, mm, ss;
-    // eg. "26:03:22:23:01:00" or "2026/03/22 23:01:00"
-    if (sscanf(input.c_str(), "%d %*c %d %*c %d %*c %d %*c %d %*c %d", &y, &m, &d, &hh, &mm, &ss) == 6) {
-      if (y < 100) y += 2000; 
-      
-      if (xSemaphoreTake(i2cMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-          SystemDrivers::Get().GetRTC().adjust(DateTime(y, m, d, hh, mm, ss));
-          xSemaphoreGive(i2cMutex);
-      }
-      Serial.println("RTC Updated!");
-    }
-  }
+  UsbCommand::Get().Loop();
   SystemCommon::Get().GetCurrentApp()->Loop();
   int buttonIndex;
     if (xQueueReceive(buttonEventQueue, &buttonIndex, 0))

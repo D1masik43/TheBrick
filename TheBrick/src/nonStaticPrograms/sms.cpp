@@ -1,6 +1,7 @@
 #include "nonStaticPrograms/sms.h"
 #include "staticPrograms/mainMenu.h"
 #include "staticPrograms/appMenu.h"
+#include "System/systemDrivers.h"
 
 static const uint16_t sms_icon[256] = {0};
 
@@ -176,7 +177,64 @@ void SmsNonStaticApp::deleteMessage(int simIndex) {
     loading = true;
 }
 
+void SmsNonStaticApp::sendSms(const String& number, const String& body) {
+    if (xSemaphoreTake(sim800Mutex, pdMS_TO_TICKS(5000)) != pdTRUE) return;
+    while (sim800->available()) sim800->read();
+    sim800->println("AT+CMGF=1");
+    delay(300);
+    while (sim800->available()) sim800->read();
+
+    String cmd = "AT+CMGS=\"" + number + "\"";
+    sim800->println(cmd);
+
+    unsigned long start = millis();
+    bool gotPrompt = false;
+    while (millis() - start < 5000) {
+        while (sim800->available()) {
+            if (sim800->read() == '>') { gotPrompt = true; break; }
+        }
+        if (gotPrompt) break;
+        delay(10);
+    }
+    if (!gotPrompt) {
+        sim800->write(0x1B);
+        xSemaphoreGive(sim800Mutex);
+        return;
+    }
+
+    sim800->print(body);
+    sim800->write(0x1A);
+
+    String resp = "";
+    start = millis();
+    while (millis() - start < 15000) {
+        while (sim800->available()) resp += (char)sim800->read();
+        if (resp.indexOf("+CMGS:") >= 0 || resp.indexOf("OK") >= 0) break;
+        if (resp.indexOf("ERROR") >= 0) break;
+        delay(10);
+    }
+    xSemaphoreGive(sim800Mutex);
+}
+
+void SmsNonStaticApp::drawSending() {
+    screenBuff->fillScreen(TFT_BLACK);
+    StatusBar::Get().Draw(*screenBuff, false, TFT_BLACK);
+    screenBuff->setTextSize(1);
+    screenBuff->setTextDatum(MC_DATUM);
+    screenBuff->setTextColor(TFT_DARKGREY);
+    screenBuff->drawString("Sending...", 120, 160);
+    screenBuff->setTextDatum(TL_DATUM);
+    SystemDrivers::Get().GetTFT().pushImage(0, 0, 240, 320, (uint16_t*)screenBuff->getPointer());
+}
+
 void SmsNonStaticApp::Loop() {
+    if (view == SMS_SENDING) {
+        drawSending();
+        sendSms(_replyTo, _composeBody);
+        view = SMS_LIST;
+        loading = true;
+        return;
+    }
     if (loading) {
         drawLoading();
         fetchMessages();
@@ -188,10 +246,16 @@ void SmsNonStaticApp::Loop() {
 void SmsNonStaticApp::Draw() {
     screenBuff->fillScreen(TFT_BLACK);
 
+    if (Keyboard::Get().IsOpen()) {
+        Keyboard::Get().Draw(*screenBuff);
+        return;
+    }
+
     switch (view) {
         case SMS_LIST: drawList(); break;
         case SMS_DETAIL: drawDetail(); break;
         case SMS_CONFIRM_DELETE: drawConfirm(); break;
+        default: break;
     }
 }
 
@@ -203,6 +267,7 @@ void SmsNonStaticApp::drawList() {
         screenBuff->setTextColor(TFT_DARKGREY);
         screenBuff->drawString("No messages", 60, 150);
         screenBuff->drawString("[KEY1] Refresh", 60, 170);
+        screenBuff->drawString("[KEY2] Compose", 60, 185);
         return;
     }
 
@@ -267,9 +332,11 @@ void SmsNonStaticApp::drawDetail() {
     }
 
     screenBuff->fillRect(0, SCREEN_HEIGHT - 18, 240, 18, TFT_BLACK);
-    screenBuff->setTextColor(TFT_RED);
     screenBuff->setTextDatum(MC_DATUM);
-    screenBuff->drawString("[KEY1] Delete", 120, SCREEN_HEIGHT - 9);
+    screenBuff->setTextColor(TFT_RED);
+    screenBuff->drawString("[KEY1] Del", 60, SCREEN_HEIGHT - 9);
+    screenBuff->setTextColor(TFT_CYAN);
+    screenBuff->drawString("[KEY2] Reply", 180, SCREEN_HEIGHT - 9);
     screenBuff->setTextDatum(TL_DATUM);
 }
 
@@ -290,6 +357,10 @@ void SmsNonStaticApp::drawConfirm() {
 
 void SmsNonStaticApp::UpdateButtons(int button) {
     if (loading) return;
+    if (Keyboard::Get().IsOpen()) {
+        Keyboard::Get().HandleButton(button);
+        return;
+    }
     switch (view) {
     case SMS_LIST:
         if (button == BUTTON_UP) {
@@ -309,7 +380,13 @@ void SmsNonStaticApp::UpdateButtons(int button) {
         if (button == BUTTON_BACK) SystemCommon::Get().SetNextApp(&AppMenu::Get());
         if (button == BUTTON_HOME) SystemCommon::Get().SetNextApp(&MainMenu::Get());
         if (button == BUTTON_KEY2) {
-      
+            Keyboard::Get().Open("To:", [this](const String& number) {
+                _replyTo = number;
+                Keyboard::Get().Open("Message:", [this](const String& body) {
+                    _composeBody = body;
+                    view = SMS_SENDING;
+                });
+            });
         }
         if (button == BUTTON_KEY1) { loading = true; }
         break;
@@ -320,17 +397,30 @@ void SmsNonStaticApp::UpdateButtons(int button) {
         if (button == BUTTON_UP) scroll.scrollY = max(0, scroll.scrollY - 20);
         if (button == BUTTON_DOWN) scroll.scrollY += 20;
         if (button == BUTTON_KEY1) view = SMS_CONFIRM_DELETE;
+        if (button == BUTTON_KEY2 && selectedIdx >= 0 && selectedIdx < (int)messages.size()) {
+            _replyTo = messages[selectedIdx].sender;
+            Keyboard::Get().Open("Reply:", [this](const String& body) {
+                _composeBody = body;
+                view = SMS_SENDING;
+            });
+        }
         break;
 
     case SMS_CONFIRM_DELETE:
         if (button == BUTTON_IN) deleteMessage(messages[selectedIdx].index);
         if (button == BUTTON_BACK) view = SMS_DETAIL;
         break;
+
+    default: break;
     }
 }
 
 void SmsNonStaticApp::UpdateTouch(const TouchPoint* touches, int count) {
     if (count <= 0 || loading) return;
+    if (Keyboard::Get().IsOpen()) {
+        Keyboard::Get().HandleTouch(touches[0]);
+        return;
+    }
     const TouchPoint& tp = touches[0];
 
     if (view == SMS_LIST) {

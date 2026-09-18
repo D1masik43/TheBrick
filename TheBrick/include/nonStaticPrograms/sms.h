@@ -2,7 +2,7 @@
 #include "appTemplates/nonStaticApp.h"
 #include "System/systemGlobals.h"
 #include "System/SystemUI/Scrollable.h"
-#include "System/SystemUI/Keyboard.h" it 
+#include "System/SystemUI/Keyboard.h"
 #include <vector>
 
 class MainMenu;
@@ -18,7 +18,8 @@ struct SmsEntry {
 enum SmsView {
     SMS_LIST,
     SMS_DETAIL,
-    SMS_CONFIRM_DELETE
+    SMS_CONFIRM_DELETE,
+    SMS_SENDING
 };
 
 class SmsNonStaticApp : public NonStaticApp {
@@ -52,6 +53,11 @@ private:
     void drawDetail();
     void drawConfirm();
     void drawLoading();
+    void drawSending();
+    void sendSms(const String& number, const String& body);
+
+    String _replyTo;
+    String _composeBody;
 
     int itemHeight = 40;
     bool loading = false;
